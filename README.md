@@ -1,8 +1,8 @@
 <div align="center">
 
-# Banner Generator API
+  # Banner Generator API
 
-A fast, serverless-optimized banner image generator with advanced caching and layer management. Perfect for dynamic social media images, OG tags, and more.
+  A fast, serverless-optimized banner image generator with advanced caching and layer management. Perfect for dynamic social media images, OG tags, and more.
 
 </div>
 
@@ -11,7 +11,6 @@ A fast, serverless-optimized banner image generator with advanced caching and la
 - Dynamic SVG/PNG Generation: Create banners on the fly with text and images
 - Layer Management: Unified layer system with reordering support
 - Advanced Caching: ETags, CDN caching, font caching, and output caching
-- System Fonts: Arial, Helvetica, Georgia, Times New Roman, Courier New, Verdana
 - Vercel Optimized: Ready for serverless deployment with built-in caching strategies
 
 ## Quick Start
