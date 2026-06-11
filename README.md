@@ -1,5 +1,7 @@
 <div align="center">
 
+  ![Banner](https://banner-img.vercel.app/api/banner?w=500&h=100&r=20&bg=%23252525&image=https%253A%252F%252Fimages.jammable.com%252Fvoices%252Fsaiba-momoi-isGxI%252F2ab9d248-9b0f-4891-afd9-16c6b346a2ca.png%2C240%2C-30%2C250%2C250%2C0&text=Banner%2520Img%2C170%2C50%2C40%2C%23ff83d3%2C0%2Cmiddle%2CInter)
+
   # Banner Generator API
 
   A fast, serverless-optimized banner image generator with advanced caching and layer management. Perfect for dynamic social media images, OG tags, and more.
