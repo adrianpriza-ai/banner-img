@@ -263,63 +263,65 @@ module.exports = async (req, res) => {
         const rawQuery = req.url.split('?')[1];
         if (rawQuery) {
             const paramPairs = rawQuery.split('&');
-            const maxLayers = 20; // Max 10 text + 10 image layers
             let layerCount = 0;
             
-            for (let i = 0; i < paramPairs.length && layerCount < maxLayers; i++) {
-                const pair = paramPairs[i];
-                const eqIndex = pair.indexOf('=');
-                if (eqIndex === -1) continue;
+            for (const pair of paramPairs) {
+                if (layerCount >= 20) break; // Max 10 text + 10 image layers
                 
-                const key = pair.substring(0, eqIndex);
-                const value = pair.substring(eqIndex + 1);
+                const [key, value] = pair.split('=');
+                if (!key || !value) continue;
                 
-                try {
-                    const decodedKey = decodeURIComponent(key);
-                    const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
+                const decodedKey = decodeURIComponent(key);
+                const decodedValue = decodeURIComponent(value);
+                
+                if (decodedKey === 'text') {
+                    const parts = decodedValue.split(',');
+                    if (!parts[0]) continue;
                     
-                    if (decodedKey === 'text') {
-                        const parts = decodedValue.split(',');
-                        if (parts[0]) {
-                            const content = parts[0].slice(0, 200);
-                            const x = parseFloat(parts[1]) || w / 2;
-                            const y = parseFloat(parts[2]) || h / 2;
-                            const fontSize = Math.min(parseFloat(parts[3]) || 36, 200);
-                            const color = parts[4]?.match(/^#[0-9a-fA-F]{3,8}$/) ? parts[4] : '#ffffff';
-                            const rotation = parseFloat(parts[5]) || 0;
-                            const anchor = ['start', 'middle', 'end'].includes(parts[6]) ? parts[6] : 'middle';
-                            const fontFamily = (parts[7] || 'Arial').slice(0, 50);
-                            
-                            if (!isNaN(x) && !isNaN(y) && !isNaN(fontSize) && !isNaN(rotation)) {
-                                allLayers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
-                                layerCount++;
-                            }
-                        }
-                    } else if (decodedKey === 'image') {
-                        const parts = decodedValue.split(',');
-                        if (parts[0]) {
-                            let url = parts[0].slice(0, 1000);
-                            
-                            // Fetch and inline external image to base64
-                            if (url.startsWith('http')) {
-                                url = await getBase64Image(url);
-                            }
-                            
-                            const x = parseFloat(parts[1]) || 10;
-                            const y = parseFloat(parts[2]) || 10;
-                            const width = parseFloat(parts[3]) || 60;
-                            const height = parseFloat(parts[4]) || 60;
-                            const rotation = parseFloat(parts[5]) || 0;
-                            
-                            if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height) && !isNaN(rotation)) {
-                                allLayers.push({ type: 'image', url, x, y, width, height, rotation });
-                                layerCount++;
-                            }
-                        }
+                    let content = parts[0];
+                    try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) {}
+                    content = content.slice(0, 200);
+                    
+                    const x = parseFloat(parts[1]) || w / 2;
+                    const y = parseFloat(parts[2]) || h / 2;
+                    const fontSize = Math.min(parseFloat(parts[3]) || 36, 200);
+                    
+                    let color = parts[4] || '#ffffff';
+                    if (!color.match(/^#[0-9a-fA-F]{3,8}$/)) {
+                        color = '#ffffff';
                     }
-                } catch (e) {
-                    // Skip malformed parameters
-                    continue;
+                    
+                    const rotation = parseFloat(parts[5]) || 0;
+                    const anchor = ['start', 'middle', 'end'].includes(parts[6]) ? parts[6] : 'middle';
+                    const fontFamily = (parts[7] || 'Arial').slice(0, 50);
+                    
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(fontSize) && !isNaN(rotation)) {
+                        allLayers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
+                        layerCount++;
+                    }
+                } else if (decodedKey === 'image') {
+                    const parts = decodedValue.split(',');
+                    if (!parts[0]) continue;
+                    
+                    let url = parts[0];
+                    try { url = decodeURIComponent(url.replace(/\+/g, ' ')); } catch(e) {}
+                    url = url.slice(0, 1000);
+                    
+                    // Fetch and inline external image to base64
+                    if (url.startsWith('http')) {
+                        url = await getBase64Image(url);
+                    }
+                    
+                    const x = parseFloat(parts[1]) || 10;
+                    const y = parseFloat(parts[2]) || 10;
+                    const width = parseFloat(parts[3]) || 60;
+                    const height = parseFloat(parts[4]) || 60;
+                    const rotation = parseFloat(parts[5]) || 0;
+                    
+                    if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height) && !isNaN(rotation)) {
+                        allLayers.push({ type: 'image', url, x, y, width, height, rotation });
+                        layerCount++;
+                    }
                 }
             }
         }
@@ -334,60 +336,60 @@ module.exports = async (req, res) => {
         const usesGoogleFonts = fontFamilies.some(font => GOOGLE_FONT_FILES[font]);
 
         // Build SVG
-        const svgParts = [
-            `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`,
-            `<defs><style><![CDATA[`
-        ];
+        let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`;
         
         // Embed Google Fonts inside CDATA block (only if Google Fonts are actually used)
+        svg += `<defs><style><![CDATA[`;
         if (usesGoogleFonts && inlineFontsCss) {
-            svgParts.push(inlineFontsCss);
+            svg += inlineFontsCss;
         } else if (usesGoogleFonts) {
             // Fallback imports if server fetch is temporarily unavailable
-            svgParts.push(
-                `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');`,
-                `@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');`,
-                `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');`
-            );
+            svg += `@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');`;
+            svg += `@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');`;
+            svg += `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');`;
         }
-        svgParts.push(`]]></style></defs>`);
+        svg += `]]></style></defs>`;
 
         const fillBg = bg === 'transparent' ? 'none' : bg;
-        svgParts.push(`<rect width="100%" height="100%" rx="${radius}" fill="${fillBg}"/>`);
-
-        // Font fallback map for better system font support
-        const fallbackMap = {
-            'Arial': 'Arial, Helvetica, sans-serif',
-            'Helvetica': 'Helvetica, Arial, sans-serif',
-            'Times New Roman': 'Times New Roman, Times, serif',
-            'Georgia': 'Georgia, Times New Roman, serif',
-            'Courier New': 'Courier New, Courier, monospace',
-            'Verdana': 'Verdana, Arial, sans-serif'
-        };
+        svg += `<rect width="100%" height="100%" rx="${radius}" fill="${fillBg}"/>`;
 
         // Process layers in order (first = bottom, last = top, so top renders on top)
         for (const layer of allLayers) {
             if (layer.type === 'image') {
                 const urlEscaped = escapeXml(layer.url);
                 if (layer.rotation === 0) {
-                    svgParts.push(`<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>`);
+                    svg += `<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>`;
                 } else {
-                    svgParts.push(`<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>`);
+                    svg += `<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>`;
                 }
             } else if (layer.type === 'text') {
                 const content = escapeXml(layer.content);
                 if (!content) continue;
+                let transform = '';
+                if (layer.rotation !== 0) transform = ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"`;
                 
-                const transform = layer.rotation !== 0 ? ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"` : '';
+                // Build font-family stack with fallbacks for better compatibility
                 const fontFamily = escapeXml(layer.fontFamily);
-                const fontFamilyStack = fallbackMap[fontFamily] || fontFamily;
+                let fontFamilyStack = fontFamily;
                 
-                svgParts.push(`<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${fontFamilyStack}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${content}</text>`);
+                // Add common fallbacks for better system font support
+                const fallbackMap = {
+                    'Arial': 'Arial, Helvetica, sans-serif',
+                    'Helvetica': 'Helvetica, Arial, sans-serif',
+                    'Times New Roman': 'Times New Roman, Times, serif',
+                    'Georgia': 'Georgia, Times New Roman, serif',
+                    'Courier New': 'Courier New, Courier, monospace',
+                    'Verdana': 'Verdana, Arial, sans-serif'
+                };
+                
+                if (fallbackMap[fontFamily]) {
+                    fontFamilyStack = fallbackMap[fontFamily];
+                }
+                
+                svg += `<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${fontFamilyStack}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${content}</text>`;
             }
         }
-        svgParts.push(`</svg>`);
-        
-        const svg = svgParts.join('');
+        svg += `</svg>`;
 
         // Handle format response
         if (q.format === 'png') {

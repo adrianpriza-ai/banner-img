@@ -332,17 +332,18 @@
             const nl = formatted ? '\n' : '';
             const tab = formatted ? '  ' : '';
 
-            const svgParts = [
-                `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${nl}`,
-                `${tab}<defs>${nl}`,
-                `${tab}${tab}<style><![CDATA[${nl}`,
-                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');${nl}`,
-                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');${nl}`,
-                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');${nl}`,
-                `${tab}${tab}]]></style>${nl}`,
-                `${tab}</defs>${nl}`,
-                `${tab}<rect width="100%" height="100%" rx="${radius}" fill="${bgVal}"/>${nl}`
-            ];
+            let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${nl}`;
+            
+            // Embed google fonts style links inside CDATA block
+            svg += `${tab}<defs>${nl}`;
+            svg += `${tab}${tab}<style><![CDATA[${nl}`;
+            svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');${nl}`;
+            svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');${nl}`;
+            svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');${nl}`;
+            svg += `${tab}${tab}]]></style>${nl}`;
+            svg += `${tab}</defs>${nl}`;
+
+            svg += `${tab}<rect width="100%" height="100%" rx="${radius}" fill="${bgVal}"/>${nl}`;
 
             // Add layers in reverse order (top layer in UI = last in SVG = rendered on top)
             for (let i = layers.length - 1; i >= 0; i--) {
@@ -351,20 +352,23 @@
                     if (!layer.url) continue;
                     const urlEscaped = escapeXml(layer.url);
                     if (layer.rotation === 0) {
-                        svgParts.push(`${tab}<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>${nl}`);
+                        svg += `${tab}<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>${nl}`;
                     } else {
-                        svgParts.push(`${tab}<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>${nl}`);
+                        svg += `${tab}<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>${nl}`;
                     }
                 } else if (layer.type === 'text') {
                     const contentEscaped = escapeXml(layer.content);
                     if (!contentEscaped) continue;
-                    const transform = layer.rotation !== 0 ? ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"` : '';
-                    svgParts.push(`${tab}<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text>${nl}`);
+                    let transform = '';
+                    if (layer.rotation !== 0) {
+                        transform = ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"`;
+                    }
+                    svg += `${tab}<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text>${nl}`;
                 }
             }
 
-            svgParts.push(`</svg>`);
-            return svgParts.join('');
+            svg += `</svg>`;
+            return svg;
         }
 
         // Build Server URL
@@ -381,10 +385,12 @@
             for (let i = layers.length - 1; i >= 0; i--) {
                 const layer = layers[i];
                 if (layer.type === 'text') {
-                    const parts = [encodeURIComponent(layer.content), layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    const encodedContent = encodeURIComponent(layer.content);
+                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
                     params.append('text', parts.join(','));
                 } else if (layer.type === 'image') {
-                    const parts = [encodeURIComponent(layer.url), layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    const encodedUrl = encodeURIComponent(layer.url);
+                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation];
                     params.append('image', parts.join(','));
                 }
             }
@@ -405,10 +411,12 @@
             for (let i = layers.length - 1; i >= 0; i--) {
                 const layer = layers[i];
                 if (layer.type === 'text') {
-                    const parts = [encodeURIComponent(layer.content), layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    const encodedContent = encodeURIComponent(layer.content);
+                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
                     params.append('text', parts.join(','));
                 } else if (layer.type === 'image') {
-                    const parts = [encodeURIComponent(layer.url), layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    const encodedUrl = encodeURIComponent(layer.url);
+                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation];
                     params.append('image', parts.join(','));
                 }
             }
@@ -744,56 +752,51 @@
                 }
 
                 // Decode Layers (unified text and image) - preserve parameter order
-                const layers = [];
+                // Clear existing layers first
+                layers = [];
                 
                 // Parse the raw query string to preserve parameter order
                 const rawQueryString = cleanUrl.split('?')[1];
                 if (rawQueryString) {
                     const paramPairs = rawQueryString.split('&');
-                    const maxLayers = 20; // Match API limit
                     
-                    for (let i = 0; i < paramPairs.length && layers.length < maxLayers; i++) {
-                        const pair = paramPairs[i];
-                        const eqIndex = pair.indexOf('=');
-                        if (eqIndex === -1) continue;
+                    for (const pair of paramPairs) {
+                        const [key, value] = pair.split('=');
+                        if (!key || !value) continue;
                         
-                        const key = pair.substring(0, eqIndex);
-                        const value = pair.substring(eqIndex + 1);
+                        const decodedKey = decodeURIComponent(key);
+                        const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
                         
-                        try {
-                            const decodedKey = decodeURIComponent(key);
-                            const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
+                        if (decodedKey === 'text') {
+                            const parts = decodedValue.split(',');
+                            if (!parts[0]) continue;
                             
-                            if (decodedKey === 'text') {
-                                const parts = decodedValue.split(',');
-                                if (parts[0]) {
-                                    const content = parts[0];
-                                    const x = parseFloat(parts[1]) || 0;
-                                    const y = parseFloat(parts[2]) || 0;
-                                    const fontSize = parseFloat(parts[3]) || 24;
-                                    const color = parts[4] || '#ffffff';
-                                    const rotation = parseFloat(parts[5]) || 0;
-                                    const anchor = parts[6] || 'middle';
-                                    const fontFamily = parts[7] || 'Arial';
+                            let content = parts[0];
+                            try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) {}
+                            
+                            const x = parseFloat(parts[1]) || 0;
+                            const y = parseFloat(parts[2]) || 0;
+                            const fontSize = parseFloat(parts[3]) || 24;
+                            const color = parts[4] || '#ffffff';
+                            const rotation = parseFloat(parts[5]) || 0;
+                            const anchor = parts[6] || 'middle';
+                            const fontFamily = parts[7] || 'Arial';
 
-                                    layers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
-                                }
-                            } else if (decodedKey === 'image') {
-                                const parts = decodedValue.split(',');
-                                if (parts[0]) {
-                                    const urlVal = parts[0];
-                                    const x = parseFloat(parts[1]) || 0;
-                                    const y = parseFloat(parts[2]) || 0;
-                                    const width = parseFloat(parts[3]) || 60;
-                                    const height = parseFloat(parts[4]) || 60;
-                                    const rotation = parseFloat(parts[5]) || 0;
+                            layers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
+                        } else if (decodedKey === 'image') {
+                            const parts = decodedValue.split(',');
+                            if (!parts[0]) continue;
+                            
+                            let urlVal = parts[0];
+                            try { urlVal = decodeURIComponent(urlVal.replace(/\+/g, ' ')); } catch(e) {}
+                            
+                            const x = parseFloat(parts[1]) || 0;
+                            const y = parseFloat(parts[2]) || 0;
+                            const width = parseFloat(parts[3]) || 60;
+                            const height = parseFloat(parts[4]) || 60;
+                            const rotation = parseFloat(parts[5]) || 0;
 
-                                    layers.push({ type: 'image', url: urlVal, x, y, width, height, rotation });
-                                }
-                            }
-                        } catch (e) {
-                            // Skip malformed parameters
-                            continue;
+                            layers.push({ type: 'image', url: urlVal, x, y, width, height, rotation });
                         }
                     }
                 }
