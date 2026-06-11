@@ -1,0 +1,825 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Banner Generator</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Fira+Code:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+        body { 
+            font-family: 'Courier New', Courier, monospace; 
+            padding: 20px; 
+            background: #f4f4f5; 
+            color: #18181b; 
+            max-width: 900px;
+            margin: 0 auto;
+            line-height: 1.4;
+        }
+        * {
+            box-sizing: border-box;
+        }
+        h1 {
+            font-size: 24px;
+            margin-top: 0;
+            margin-bottom: 20px;
+            color: #09090b;
+        }
+        .section { 
+            background: #ffffff; 
+            padding: 15px; 
+            border-radius: 6px; 
+            margin-bottom: 15px; 
+            border: 1px solid #e4e4e7;
+        }
+        h3 { 
+            margin-top: 0; 
+            border-bottom: 1px solid #e4e4e7; 
+            padding-bottom: 5px; 
+            font-size: 16px;
+            color: #27272a;
+        }
+        .row { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+            flex-wrap: wrap; 
+            align-items: flex-end; 
+        }
+        .col {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        label { 
+            display: block; 
+            font-size: 12px; 
+            color: #71717a; 
+            margin-bottom: 2px; 
+            font-weight: bold;
+        }
+        input, select, textarea { 
+            background: #ffffff; 
+            color: #18181b; 
+            border: 1px solid #d4d4d8; 
+            padding: 6px; 
+            border-radius: 4px; 
+            font-family: inherit;
+            font-size: 13px;
+        }
+        input[type="number"] {
+            width: 80px;
+        }
+        input[type="color"] { 
+            padding: 2px; 
+            height: 32px; 
+            width: 50px; 
+            cursor: pointer;
+        }
+        button { 
+            background: #2563eb; 
+            color: white; 
+            border: 1px solid #1d4ed8; 
+            padding: 8px 16px; 
+            border-radius: 4px; 
+            cursor: pointer; 
+            font-weight: bold; 
+            font-family: inherit;
+            font-size: 13px;
+            transition: background 0.1s;
+        }
+        button:hover { 
+            background: #1d4ed8; 
+        }
+        button.small { 
+            padding: 4px 8px; 
+            font-size: 11px; 
+            background: #e4e4e7; 
+            color: #18181b;
+            border: 1px solid #d4d4d8;
+        }
+        button.small:hover { 
+            background: #d4d4d8; 
+        }
+        button.small:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+        button.danger {
+            background: #ef4444;
+            color: white;
+            border: 1px solid #dc2626;
+        }
+        button.danger:hover {
+            background: #dc2626;
+        }
+        #preview { 
+            background: repeating-conic-gradient(#e4e4e7 0% 25%, #fafafa 0% 50%) 50% / 20px 20px; 
+            padding: 20px; 
+            border-radius: 6px; 
+            border: 1px solid #e4e4e7;
+            text-align: center; 
+            margin: 20px 0; 
+            overflow-x: auto;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        #preview svg { 
+            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
+            background-color: transparent;
+            max-width: 100%;
+            height: auto;
+        }
+        .layer-card { 
+            background: #fafafa; 
+            padding: 12px; 
+            margin-bottom: 12px; 
+            border-radius: 6px; 
+            border: 1px solid #e4e4e7;
+            border-left: 3px solid #2563eb; 
+        }
+        .layer-header { 
+            display: flex; 
+            justify-content: space-between; 
+            margin-bottom: 8px; 
+            font-size: 12px; 
+            font-weight: bold;
+            align-items: center;
+        }
+        .layer-header div {
+            display: flex;
+            gap: 4px;
+        }
+        .url-box { 
+            background: #f1f5f9; 
+            padding: 12px; 
+            font-size: 12px; 
+            word-break: break-all; 
+            margin-top: 15px; 
+            border-radius: 4px;
+            border: 1px solid #cbd5e1;
+            color: #334155;
+        }
+        .url-box strong {
+            color: #0f172a;
+        }
+        .hint { 
+            font-size: 11px; 
+            color: #71717a; 
+            margin-top: 4px; 
+        }
+        
+        /* Mobile viewport styling */
+        @media (max-width: 600px) {
+            body {
+                padding: 10px;
+            }
+            .row {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 8px;
+            }
+            input, select, button {
+                width: 100% !important;
+            }
+            input[type="color"] {
+                height: 38px;
+            }
+            .layer-card .row {
+                flex-direction: row;
+            }
+            .layer-card .row > div {
+                flex: 1;
+                min-width: 45%;
+            }
+            .layer-card .row > div.full-width {
+                min-width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <h1>Banner Generator</h1>
+
+    <!-- Canvas configuration -->
+    <div class="section">
+        <h3>Canvas Settings</h3>
+        <div class="row">
+            <div class="col"><label>Width</label><input id="w" value="800" type="number"></div>
+            <div class="col"><label>Height</label><input id="h" value="200" type="number"></div>
+            <div class="col"><label>Radius</label><input id="r" value="20" type="number"></div>
+            <div class="col">
+                <label>BG Style</label>
+                <select id="bg-type">
+                    <option value="solid" selected>Solid</option>
+                    <option value="transparent">Transparent</option>
+                </select>
+            </div>
+            <div class="col" id="bg-color-wrapper">
+                <label>BG Color</label>
+                <div style="display:flex; gap:4px; align-items:center;">
+                    <input id="bg-hex" type="text" value="#0f172a" style="width:80px;">
+                    <input id="bg" type="color" value="#0f172a">
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- URL Decoder box -->
+    <div class="section">
+        <h3>Decode Banner URL</h3>
+        <div class="row" style="align-items: stretch;">
+            <input id="decodeInput" type="text" placeholder="Paste banner URL (e.g. /api/banner?w=800...) or markdown code" style="flex: 1; min-width: 250px;">
+            <button onclick="decodeInputUrl()">Decode</button>
+        </div>
+        <div class="hint">Paste a previously generated URL to read what's in it or modify it.</div>
+    </div>
+
+    <!-- Layers -->
+    <div class="section">
+        <h3>Layers</h3>
+        <div id="layersContainer"></div>
+        <div class="row">
+            <button id="addTextBtn" class="small">+ Add Text Layer</button>
+            <button id="addImageBtn" class="small">+ Add Image Layer</button>
+        </div>
+    </div>
+
+    <!-- Downloads and Links -->
+    <div class="section">
+        <h3>Output & Export</h3>
+        <div class="row">
+            <button onclick="downloadPNG()" style="background:#10b981; border-color:#059669;">Download PNG</button>
+            <button onclick="copyEditorUrl()" style="background:#64748b; border-color:#475569;">Copy Editor Link</button>
+            <button onclick="copyMarkdown()" style="background:#64748b; border-color:#475569;">Copy Markdown</button>
+            <button onclick="copyServerUrl()" style="background:#64748b; border-color:#475569;">Copy API URL</button>
+        </div>
+    </div>
+
+    <!-- Live Preview -->
+    <div id="preview">
+        <!-- SVG will be injected inline here -->
+    </div>
+
+    <!-- Raw SVG code and GET link -->
+    <div class="section">
+        <h3>Raw Details</h3>
+        <div class="col" style="margin-bottom: 15px;">
+            <label>API URL Endpoint</label>
+            <input id="apiUrlBox" type="text" readonly style="width:100%; font-family:monospace; background:#f4f4f5;">
+        </div>
+        <div class="col">
+            <label>Raw SVG Source</label>
+            <textarea id="rawSvgSource" readonly style="width:100%; height:150px; font-family:monospace; background:#f4f4f5;"></textarea>
+        </div>
+    </div>
+
+    <script>
+        // Unified layer system
+        let layers = [
+            { type: 'text', content: "Hello World", x: 400, y: 100, fontSize: 40, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial" },
+            { type: 'image', url: "https://picsum.photos/id/104/80/80", x: 20, y: 60, width: 80, height: 80, rotation: 0 }
+        ];
+
+        let debounceTimer = null;
+
+        // BG style toggle listener
+        document.getElementById('bg-type').addEventListener('change', function(e) {
+            const wrapper = document.getElementById('bg-color-wrapper');
+            if (e.target.value === 'transparent') {
+                wrapper.style.display = 'none';
+            } else {
+                wrapper.style.display = 'block';
+            }
+            debouncedUpdate();
+        });
+
+        // Color sync listeners
+        document.getElementById('bg').addEventListener('input', function(e) {
+            document.getElementById('bg-hex').value = e.target.value;
+            debouncedUpdate();
+        });
+        document.getElementById('bg-hex').addEventListener('input', function(e) {
+            const val = e.target.value.trim();
+            if (val.match(/^#[0-9a-fA-F]{6}$/)) {
+                document.getElementById('bg').value = val;
+                debouncedUpdate();
+            }
+        });
+
+        // Event listeners on inputs
+        document.querySelectorAll('#w, #h, #r').forEach(el => el.addEventListener('input', debouncedUpdate));
+
+        // Format helper to escape XML special chars
+        function escapeXml(unsafe) {
+            if (!unsafe) return '';
+            return unsafe.replace(/[<>&'"]/g, (c) => {
+                const map = { '<': '&lt;', '>': '&gt;', '&': '&amp;', "'": '&apos;', '"': '&quot;' };
+                return map[c];
+            });
+        }
+
+        // SVG String Generator
+        function buildSvgCode(formatted = false) {
+            const w = parseInt(document.getElementById('w').value) || 800;
+            const h = parseInt(document.getElementById('h').value) || 200;
+            const radius = parseInt(document.getElementById('r').value) || 20;
+            
+            const isTransparent = document.getElementById('bg-type').value === 'transparent';
+            const bgVal = isTransparent ? 'none' : (document.getElementById('bg-hex').value || '#0f172a');
+
+            const nl = formatted ? '\n' : '';
+            const tab = formatted ? '  ' : '';
+
+            const svgParts = [
+                `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${nl}`,
+                `${tab}<defs>${nl}`,
+                `${tab}${tab}<style><![CDATA[${nl}`,
+                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');${nl}`,
+                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');${nl}`,
+                `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');${nl}`,
+                `${tab}${tab}]]></style>${nl}`,
+                `${tab}</defs>${nl}`,
+                `${tab}<rect width="100%" height="100%" rx="${radius}" fill="${bgVal}"/>${nl}`
+            ];
+
+            // Add layers in reverse order (top layer in UI = last in SVG = rendered on top)
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                if (layer.type === 'image') {
+                    if (!layer.url) continue;
+                    const urlEscaped = escapeXml(layer.url);
+                    if (layer.rotation === 0) {
+                        svgParts.push(`${tab}<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>${nl}`);
+                    } else {
+                        svgParts.push(`${tab}<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>${nl}`);
+                    }
+                } else if (layer.type === 'text') {
+                    const contentEscaped = escapeXml(layer.content);
+                    if (!contentEscaped) continue;
+                    const transform = layer.rotation !== 0 ? ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"` : '';
+                    svgParts.push(`${tab}<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text>${nl}`);
+                }
+            }
+
+            svgParts.push(`</svg>`);
+            return svgParts.join('');
+        }
+
+        // Build Server URL
+        function buildServerQueryString() {
+            const params = new URLSearchParams();
+            params.set('w', document.getElementById('w').value);
+            params.set('h', document.getElementById('h').value);
+            params.set('r', document.getElementById('r').value);
+
+            const isTransparent = document.getElementById('bg-type').value === 'transparent';
+            params.set('bg', isTransparent ? 'transparent' : document.getElementById('bg-hex').value);
+
+            // Send layers in reverse order so first param = top layer
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                if (layer.type === 'text') {
+                    const parts = [encodeURIComponent(layer.content), layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    params.append('text', parts.join(','));
+                } else if (layer.type === 'image') {
+                    const parts = [encodeURIComponent(layer.url), layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    params.append('image', parts.join(','));
+                }
+            }
+            return `/api/banner?${params.toString()}`;
+        }
+
+        // Build Shareable Editor link
+        function buildShareableEditorLink() {
+            const params = new URLSearchParams();
+            params.set('w', document.getElementById('w').value);
+            params.set('h', document.getElementById('h').value);
+            params.set('r', document.getElementById('r').value);
+
+            const isTransparent = document.getElementById('bg-type').value === 'transparent';
+            params.set('bg', isTransparent ? 'transparent' : document.getElementById('bg-hex').value);
+
+            // Send layers in reverse order so first param = top layer
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                if (layer.type === 'text') {
+                    const parts = [encodeURIComponent(layer.content), layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    params.append('text', parts.join(','));
+                } else if (layer.type === 'image') {
+                    const parts = [encodeURIComponent(layer.url), layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    params.append('image', parts.join(','));
+                }
+            }
+            return window.location.origin + window.location.pathname + '?' + params.toString();
+        }
+
+        // Render preview and raw code
+        function updatePreview() {
+            const svgCode = buildSvgCode(false);
+            const formattedSvgCode = buildSvgCode(true);
+
+            // Inject SVG directly inline so all external resource resolution and selection works
+            document.getElementById('preview').innerHTML = svgCode;
+
+            // Update raw source box
+            document.getElementById('rawSvgSource').value = formattedSvgCode;
+
+            // Update URL box
+            const serverUrl = window.location.origin + buildServerQueryString();
+            document.getElementById('apiUrlBox').value = serverUrl;
+        }
+
+        function debouncedUpdate() {
+            if (debounceTimer) clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(updatePreview, 100);
+        }
+
+        // Render unified layers list
+        function renderLayers() {
+            const container = document.getElementById('layersContainer');
+            container.innerHTML = '';
+            layers.forEach((layer, idx) => {
+                const div = document.createElement('div');
+                div.className = 'layer-card';
+                
+                if (layer.type === 'text') {
+                    div.innerHTML = `
+                        <div class="layer-header">
+                            <span>Text Layer #${idx+1}</span>
+                            <div>
+                                <button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
+                                <button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
+                                <button class="small danger" onclick="removeLayer(${idx})">Remove</button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="full-width" style="flex:2;"><label>Content</label><input class="txt-content" value="${escapeXml(layer.content)}" style="width:100%"></div>
+                            <div><label>X</label><input class="txt-x" type="number" value="${layer.x}"></div>
+                            <div><label>Y</label><input class="txt-y" type="number" value="${layer.y}"></div>
+                            <div><label>Size</label><input class="txt-size" type="number" value="${layer.fontSize}"></div>
+                        </div>
+                        <div class="row">
+                            <div>
+                                <label>Color</label>
+                                <div style="display:flex; gap:2px; align-items:center;">
+                                    <input class="txt-color-hex" type="text" value="${layer.color}" style="width:75px;">
+                                    <input class="txt-color" type="color" value="${layer.color.slice(0, 7)}">
+                                </div>
+                            </div>
+                            <div><label>Rotation</label><input class="txt-rot" type="number" value="${layer.rotation}"></div>
+                            <div><label>Anchor</label>
+                                <select class="txt-anchor">
+                                    <option value="start" ${layer.anchor === 'start' ? 'selected' : ''}>start</option>
+                                    <option value="middle" ${layer.anchor === 'middle' ? 'selected' : ''}>middle</option>
+                                    <option value="end" ${layer.anchor === 'end' ? 'selected' : ''}>end</option>
+                                </select>
+                            </div>
+                            <div><label>Font</label>
+                                <select class="txt-font">
+                                    <option value="Arial" ${layer.fontFamily === 'Arial' ? 'selected' : ''}>Arial</option>
+                                    <option value="Courier New" ${layer.fontFamily === 'Courier New' ? 'selected' : ''}>Courier New</option>
+                                    <option value="Georgia" ${layer.fontFamily === 'Georgia' ? 'selected' : ''}>Georgia</option>
+                                    <option value="Times New Roman" ${layer.fontFamily === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
+                                    <option value="Verdana" ${layer.fontFamily === 'Verdana' ? 'selected' : ''}>Verdana</option>
+                                    <option value="Trebuchet MS" ${layer.fontFamily === 'Trebuchet MS' ? 'selected' : ''}>Trebuchet MS</option>
+                                    <option value="Inter" ${layer.fontFamily === 'Inter' ? 'selected' : ''}>Inter (Google)</option>
+                                    <option value="Fira Code" ${layer.fontFamily === 'Fira Code' ? 'selected' : ''}>Fira Code (Google)</option>
+                                    <option value="Playfair Display" ${layer.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display (Google)</option>
+                                </select>
+                            </div>
+                        </div>
+                    `;
+
+                    // Update data logic
+                    const syncData = () => {
+                        layers[idx].content = div.querySelector('.txt-content').value;
+                        layers[idx].x = parseFloat(div.querySelector('.txt-x').value) || 0;
+                        layers[idx].y = parseFloat(div.querySelector('.txt-y').value) || 0;
+                        layers[idx].fontSize = parseFloat(div.querySelector('.txt-size').value) || 10;
+                        layers[idx].color = div.querySelector('.txt-color-hex').value;
+                        layers[idx].rotation = parseFloat(div.querySelector('.txt-rot').value) || 0;
+                        layers[idx].anchor = div.querySelector('.txt-anchor').value;
+                        layers[idx].fontFamily = div.querySelector('.txt-font').value;
+                        debouncedUpdate();
+                    };
+
+                    const colorHex = div.querySelector('.txt-color-hex');
+                    const colorPicker = div.querySelector('.txt-color');
+                    colorPicker.addEventListener('input', (e) => {
+                        colorHex.value = e.target.value;
+                        layers[idx].color = e.target.value;
+                        debouncedUpdate();
+                    });
+                    colorHex.addEventListener('input', (e) => {
+                        const val = e.target.value.trim();
+                        if (val.match(/^#[0-9a-fA-F]{6}$/)) {
+                            colorPicker.value = val;
+                            layers[idx].color = val;
+                            debouncedUpdate();
+                        }
+                    });
+
+                    const inputs = div.querySelectorAll('input, select');
+                    inputs.forEach(inp => {
+                        inp.addEventListener('input', syncData);
+                        inp.addEventListener('change', syncData);
+                    });
+
+                } else if (layer.type === 'image') {
+                    div.innerHTML = `
+                        <div class="layer-header">
+                            <span>Image Layer #${idx+1}</span>
+                            <div>
+                                <button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
+                                <button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
+                                <button class="small danger" onclick="removeLayer(${idx})">Remove</button>
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div class="full-width" style="flex:3;">
+                                <label>Image Source URL</label>
+                                <input class="img-url" value="${escapeXml(layer.url.startsWith('data:') ? '[Base64 Image]' : layer.url)}" style="width:100%" placeholder="https://example.com/logo.png">
+                            </div>
+                        </div>
+                        <div class="row">
+                            <div><label>X</label><input class="img-x" type="number" value="${layer.x}"></div>
+                            <div><label>Y</label><input class="img-y" type="number" value="${layer.y}"></div>
+                            <div><label>Width</label><input class="img-w" type="number" value="${layer.width}"></div>
+                            <div><label>Height</label><input class="img-h" type="number" value="${layer.height}"></div>
+                            <div><label>Rotation</label><input class="img-rot" type="number" value="${layer.rotation}"></div>
+                        </div>
+                    `;
+
+                    const syncImageData = () => {
+                        const rawUrl = div.querySelector('.img-url').value;
+                        if (rawUrl !== '[Base64 Image]') {
+                            layers[idx].url = rawUrl;
+                        }
+                        layers[idx].x = parseFloat(div.querySelector('.img-x').value) || 0;
+                        layers[idx].y = parseFloat(div.querySelector('.img-y').value) || 0;
+                        layers[idx].width = parseFloat(div.querySelector('.img-w').value) || 0;
+                        layers[idx].height = parseFloat(div.querySelector('.img-h').value) || 0;
+                        layers[idx].rotation = parseFloat(div.querySelector('.img-rot').value) || 0;
+                        debouncedUpdate();
+                    };
+
+                    const inputs = div.querySelectorAll('input');
+                    inputs.forEach(inp => {
+                        inp.addEventListener('input', syncImageData);
+                        inp.addEventListener('change', syncImageData);
+                    });
+                }
+
+                container.appendChild(div);
+            });
+        }
+
+        // Layer manipulators
+        function removeLayer(idx) { 
+            layers.splice(idx, 1); 
+            renderLayers(); 
+            debouncedUpdate(); 
+        }
+        
+        function moveLayer(idx, direction) {
+            const newIdx = idx + direction;
+            if (newIdx < 0 || newIdx >= layers.length) return;
+            
+            // Swap layers
+            [layers[idx], layers[newIdx]] = [layers[newIdx], layers[idx]];
+            renderLayers();
+            debouncedUpdate();
+        }
+
+        document.getElementById('addTextBtn').onclick = () => {
+            const w = parseInt(document.getElementById('w').value) || 800;
+            const h = parseInt(document.getElementById('h').value) || 200;
+            layers.push({ type: 'text', content: "New text", x: Math.round(w/2), y: Math.round(h/2), fontSize: 32, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial" });
+            renderLayers();
+            debouncedUpdate();
+        };
+        
+        document.getElementById('addImageBtn').onclick = () => {
+            layers.push({ type: 'image', url: "https://picsum.photos/id/102/80/80", x: 50, y: 60, width: 80, height: 80, rotation: 0 });
+            renderLayers();
+            debouncedUpdate();
+        };
+
+        // Download SVG client-side
+        function downloadSVG() {
+            const svgCode = buildSvgCode(true);
+            const blob = new Blob([svgCode], { type: 'image/svg+xml;charset=utf-8' });
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(blob);
+            a.download = 'banner.svg';
+            a.click();
+        }
+
+        // Download PNG (Server-side rendering via Resvg, falls back to canvas if offline)
+        function downloadPNG() {
+            // Check if running on local file system without a running dev server
+            if (window.location.protocol === 'file:' || (window.location.hostname === 'localhost' && !window.location.port)) {
+                downloadPngClientSide();
+                return;
+            }
+
+            // Flawless server-side Resvg downloader (correctly processes fonts & nested Base64 graphics)
+            const query = buildServerQueryString();
+            const pngDownloadUrl = window.location.origin + query + '&format=png&download=true';
+            window.location.href = pngDownloadUrl;
+        }
+
+        // Client-side canvas rendering fallback
+        function downloadPngClientSide() {
+            const w = parseInt(document.getElementById('w').value) || 800;
+            const h = parseInt(document.getElementById('h').value) || 200;
+            const svgCode = buildSvgCode(false);
+
+            const blob = new Blob([svgCode], { type: 'image/svg+xml;charset=utf-8' });
+            const blobUrl = URL.createObjectURL(blob);
+
+            const image = new Image();
+            image.onload = function() {
+                // Wait for sub-resources (like Base64 encoded images) to decode inside the SVG
+                setTimeout(() => {
+                    try {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = w;
+                        canvas.height = h;
+                        const context = canvas.getContext('2d');
+                        context.drawImage(image, 0, 0);
+
+                        const a = document.createElement('a');
+                        a.href = canvas.toDataURL('image/png');
+                        a.download = 'banner.png';
+                        a.click();
+                    } catch (e) {
+                        alert('Local canvas download blocked. Please run a local web server, or upload images directly using file selection to bypass CORS blocks.');
+                        console.error(e);
+                    } finally {
+                        URL.revokeObjectURL(blobUrl);
+                    }
+                }, 150);
+            };
+            image.onerror = function() {
+                alert('Rendering failed! Check your elements.');
+                URL.revokeObjectURL(blobUrl);
+            };
+            image.src = blobUrl;
+        }
+
+        // Copy integrations
+        function copyMarkdown() {
+            const url = window.location.origin + buildServerQueryString();
+            navigator.clipboard.writeText(`![Banner](${url})`);
+            alert('Markdown code copied!');
+        }
+        function copyServerUrl() {
+            const url = window.location.origin + buildServerQueryString();
+            navigator.clipboard.writeText(url);
+            alert('API URL copied!');
+        }
+        function copyEditorUrl() {
+            const url = buildShareableEditorLink();
+            navigator.clipboard.writeText(url);
+            alert('Shareable editor link copied!');
+        }
+
+        // URL Decoder & Importer
+        function decodeInputUrl() {
+            const val = document.getElementById('decodeInput').value;
+            if (!val) {
+                alert('Please enter a URL first!');
+                return;
+            }
+            decodeBannerUrl(val);
+        }
+
+        function decodeBannerUrl(urlString) {
+            try {
+                let cleanUrl = urlString.trim();
+
+                // Clean markdown link formatting (e.g. ![Banner](http://...))
+                const markdownMatch = cleanUrl.match(/!\[.*?\]\((.*?)\)/);
+                if (markdownMatch) {
+                    cleanUrl = markdownMatch[1];
+                }
+
+                // Make sure we have a query string structure to parse
+                if (cleanUrl.startsWith('?')) {
+                    cleanUrl = 'http://example.com/api/banner' + cleanUrl;
+                } else if (!cleanUrl.includes('?') && cleanUrl.includes('=')) {
+                    cleanUrl = 'http://example.com/api/banner?' + cleanUrl;
+                } else if (!cleanUrl.startsWith('http://') && !cleanUrl.startsWith('https://')) {
+                    cleanUrl = 'http://example.com' + cleanUrl;
+                }
+
+                const url = new URL(cleanUrl);
+                const params = url.searchParams;
+
+                // Decode Canvas dimensions
+                if (params.has('w')) document.getElementById('w').value = params.get('w');
+                if (params.has('h')) document.getElementById('h').value = params.get('h');
+                if (params.has('r')) document.getElementById('r').value = params.get('r');
+                
+                if (params.has('bg')) {
+                    const bgVal = params.get('bg');
+                    const bgTypeSelect = document.getElementById('bg-type');
+                    const bgHex = document.getElementById('bg-hex');
+                    const bgPick = document.getElementById('bg');
+                    
+                    if (bgVal === 'transparent') {
+                        bgTypeSelect.value = 'transparent';
+                        document.getElementById('bg-color-wrapper').style.display = 'none';
+                    } else {
+                        bgTypeSelect.value = 'solid';
+                        document.getElementById('bg-color-wrapper').style.display = 'block';
+                        bgHex.value = bgVal;
+                        if (bgVal.match(/^#[0-9a-fA-F]{6}$/)) {
+                            bgPick.value = bgVal;
+                        }
+                    }
+                }
+
+                // Decode Layers (unified text and image) - preserve parameter order
+                const layers = [];
+                
+                // Parse the raw query string to preserve parameter order
+                const rawQueryString = cleanUrl.split('?')[1];
+                if (rawQueryString) {
+                    const paramPairs = rawQueryString.split('&');
+                    const maxLayers = 20; // Match API limit
+                    
+                    for (let i = 0; i < paramPairs.length && layers.length < maxLayers; i++) {
+                        const pair = paramPairs[i];
+                        const eqIndex = pair.indexOf('=');
+                        if (eqIndex === -1) continue;
+                        
+                        const key = pair.substring(0, eqIndex);
+                        const value = pair.substring(eqIndex + 1);
+                        
+                        try {
+                            const decodedKey = decodeURIComponent(key);
+                            const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
+                            
+                            if (decodedKey === 'text') {
+                                const parts = decodedValue.split(',');
+                                if (parts[0]) {
+                                    const content = parts[0];
+                                    const x = parseFloat(parts[1]) || 0;
+                                    const y = parseFloat(parts[2]) || 0;
+                                    const fontSize = parseFloat(parts[3]) || 24;
+                                    const color = parts[4] || '#ffffff';
+                                    const rotation = parseFloat(parts[5]) || 0;
+                                    const anchor = parts[6] || 'middle';
+                                    const fontFamily = parts[7] || 'Arial';
+
+                                    layers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
+                                }
+                            } else if (decodedKey === 'image') {
+                                const parts = decodedValue.split(',');
+                                if (parts[0]) {
+                                    const urlVal = parts[0];
+                                    const x = parseFloat(parts[1]) || 0;
+                                    const y = parseFloat(parts[2]) || 0;
+                                    const width = parseFloat(parts[3]) || 60;
+                                    const height = parseFloat(parts[4]) || 60;
+                                    const rotation = parseFloat(parts[5]) || 0;
+
+                                    layers.push({ type: 'image', url: urlVal, x, y, width, height, rotation });
+                                }
+                            }
+                        } catch (e) {
+                            // Skip malformed parameters
+                            continue;
+                        }
+                    }
+                }
+                
+                // URL building sends [bottom, ..., top] so params received as [bottom, ..., top]
+                // Reverse to get [top, ..., bottom] for UI display
+                layers.reverse();
+
+                renderLayers();
+                updatePreview();
+                alert('Successfully decoded and loaded banner parameters!');
+            } catch (err) {
+                alert('Invalid URL parameter structure.');
+                console.error(err);
+            }
+        }
+
+        // Initialize state
+        window.addEventListener('DOMContentLoaded', () => {
+            if (window.location.search) {
+                decodeBannerUrl(window.location.href);
+            } else {
+                renderLayers();
+                updatePreview();
+            }
+        });
+    </script>
+</body>
+</html>
