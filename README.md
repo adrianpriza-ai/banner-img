@@ -147,7 +147,6 @@ The included web interface provides:
 - First request: Full processing (~500-1000ms)
 - Cached requests: 10-100x faster (~5-50ms)
 - Edge caching: Served from nearest Vercel CDN location
-- Font persistence: No repeated downloads across function invocations
 
 ## Configuration
 
