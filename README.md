@@ -14,6 +14,8 @@
 - Unified Layer System: Text and images in a single list with z-index control
 - Layer Reordering: Move layers up/down with arrow buttons (top layer = rendered on top)
 - Advanced Caching: ETags, CDN caching, font caching, and output caching
+- Google Fonts Support: Inter, Fira Code, Playfair Display with smart fallbacks
+- System Fonts: Arial, Helvetica, Georgia, Times New Roman, Courier New, Verdana with fallback chains
 - Vercel Optimized: Ready for serverless deployment with built-in caching strategies
 - URL Import/Export: Decode banner URLs to edit designs, share configurations via URL
 
@@ -147,6 +149,7 @@ The included web interface provides:
 - First request: Full processing (~500-1000ms)
 - Cached requests: 10-100x faster (~5-50ms)
 - Edge caching: Served from nearest Vercel CDN location
+- Font persistence: No repeated downloads across function invocations
 
 ## Configuration
 
