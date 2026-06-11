@@ -11,9 +11,11 @@
 ## Features
 
 - Dynamic SVG/PNG Generation: Create banners on the fly with text and images
-- Layer Management: Unified layer system with reordering support
+- Unified Layer System: Text and images in a single list with z-index control
+- Layer Reordering: Move layers up/down with arrow buttons (top layer = rendered on top)
 - Advanced Caching: ETags, CDN caching, font caching, and output caching
 - Vercel Optimized: Ready for serverless deployment with built-in caching strategies
+- URL Import/Export: Decode banner URLs to edit designs, share configurations via URL
 
 ## Quick Start
 
@@ -69,6 +71,8 @@ image=url,x,y,width,height,rotation
 
 Example: `image=https://example.com/logo.png,50,50,100,100,0`
 
+**Layer Ordering**: Parameters are processed in order. The first layer parameter is rendered at the bottom, the last layer parameter is rendered on top.
+
 ## Examples
 
 ### Simple Text Banner
@@ -87,11 +91,16 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0`
 
 ```
 /api/banner?w=1200&h=630&
+image=https://picsum.photos/200,100,100,100,0&
 text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&
 text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&
-image=https://picsum.photos/200,100,100,100,0&
 bg=%231e3a8a&format=png
 ```
+
+In this example:
+- Image parameter is first, so it renders at the bottom
+- "Top Layer" text renders on top of the image
+- "Bottom Layer" text renders on top of everything (last parameter = top layer)
 
 ### Markdown Usage
 
@@ -116,19 +125,22 @@ banner-img/
 
 ### Key Features
 
-- Unified Layer System: Text and images in a single list with z-index control
-- Smart Caching: ETags for conditional requests (304 responses), CDN caching (24 hours), output caching (1 hour), font caching (7 days)
-- Font Support: System fonts + Google Fonts with automatic fallbacks
-- Layer Reordering: Move layers up/down to control rendering order
+- **Unified Layer System**: Text and images in a single list with z-index control
+- **Correct Layer Ordering**: Top layer in UI list = rendered on top in final image
+- **Smart Caching**: ETags for conditional requests (304 responses), CDN caching (24 hours), output caching (1 hour), font caching (7 days)
+- **Font Support**: System fonts + Google Fonts with automatic fallback chains
+- **Parameter Order Preservation**: Maintains exact layer ordering from URL parameters
 
 ## Web Interface
 
 The included web interface provides:
 
-- Visual Editor: Real-time banner preview
-- Layer Management: Add/remove/reorder text and image layers
-- Export Options: Download as PNG/SVG, copy URLs, copy Markdown
-- URL Decoder: Import existing banner configurations
+- **Visual Editor**: Real-time SVG preview as you edit
+- **Unified Layer Management**: Add/remove text and image layers in a single list
+- **Layer Reordering**: Move layers up/down with arrow buttons (top layer = rendered on top)
+- **Export Options**: Download as PNG/SVG, copy URLs, copy Markdown, copy editor links
+- **URL Decoder**: Paste any banner URL to import and edit all settings (canvas, text, image layers)
+- **Shareable Links**: Generate editor links to share designs with others
 
 ## Performance
 
