@@ -5,39 +5,83 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=Fira+Code:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Outfit:wght@500;700;800&family=Inter:wght@400;700&family=Fira+Code:wght@400;700&family=Playfair+Display:wght@400;700&display=swap" rel="stylesheet">
     <style>
+        :root {
+            --bg-base: #09090b;
+            --bg-surface: #121215;
+            --bg-input: #1c1c21;
+            --border-color: #27272a;
+            --text-primary: #f4f4f5;
+            --text-secondary: #94949e;
+            --accent: #3b82f6;
+            --accent-hover: #60a5fa;
+            --success: #10b981;
+            --danger: #dc2626;
+        }
+
         body { 
-            font-family: 'Courier New', Courier, monospace; 
-            padding: 20px; 
-            background: #f4f4f5; 
-            color: #18181b; 
-            max-width: 900px;
+            font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
+            padding: 15px; 
+            background: var(--bg-base); 
+            color: var(--text-primary); 
+            max-width: 800px;
             margin: 0 auto;
             line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
         }
         * {
             box-sizing: border-box;
         }
-        h1 {
-            font-size: 24px;
-            margin-top: 0;
-            margin-bottom: 20px;
-            color: #09090b;
+        
+        .header-container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 10px;
         }
+
+        .github-link {
+            color: var(--text-secondary);
+            display: inline-flex;
+            align-items: center;
+        }
+
+        .github-link:hover {
+            color: var(--text-primary);
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 24px;
+            font-weight: 700;
+            margin: 0;
+            color: #ffffff;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            font-size: 12px;
+            color: var(--text-secondary);
+            margin-top: 2px;
+        }
+
         .section { 
-            background: #ffffff; 
+            background: var(--bg-surface); 
             padding: 15px; 
             border-radius: 6px; 
-            margin-bottom: 15px; 
-            border: 1px solid #e4e4e7;
+            margin-bottom: 12px; 
+            border: 1px solid var(--border-color);
         }
         h3 { 
             margin-top: 0; 
-            border-bottom: 1px solid #e4e4e7; 
-            padding-bottom: 5px; 
-            font-size: 16px;
-            color: #27272a;
+            border-bottom: 1px solid var(--border-color); 
+            padding-bottom: 8px; 
+            font-size: 14px;
+            font-weight: 600;
+            color: var(--text-primary);
         }
         .row { 
             display: flex; 
@@ -49,102 +93,142 @@
         .col {
             display: flex;
             flex-direction: column;
-            gap: 2px;
+            gap: 4px;
         }
         label { 
             display: block; 
-            font-size: 12px; 
-            color: #71717a; 
-            margin-bottom: 2px; 
-            font-weight: bold;
+            font-size: 10px; 
+            color: var(--text-secondary); 
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
         input, select, textarea { 
-            background: #ffffff; 
-            color: #18181b; 
-            border: 1px solid #d4d4d8; 
-            padding: 6px; 
+            background: var(--bg-input); 
+            color: var(--text-primary); 
+            border: 1px solid var(--border-color); 
+            padding: 6px 10px; 
             border-radius: 4px; 
             font-family: inherit;
             font-size: 13px;
+            outline: none;
+        }
+        input:focus, select:focus, textarea:focus {
+            border-color: var(--accent);
         }
         input[type="number"] {
-            width: 80px;
+            width: 75px;
         }
         input[type="color"] { 
-            padding: 2px; 
-            height: 32px; 
-            width: 50px; 
+            padding: 0; 
+            height: 30px; 
+            width: 35px; 
             cursor: pointer;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            background: none;
+        }
+        input[type="color"]::-webkit-color-swatch-wrapper {
+            padding: 0;
+        }
+        input[type="color"]::-webkit-color-swatch {
+            border: none;
+            border-radius: 3px;
         }
         button { 
-            background: #2563eb; 
-            color: white; 
-            border: 1px solid #1d4ed8; 
-            padding: 8px 16px; 
+            background: #27272a;
+            color: var(--text-primary); 
+            border: 1px solid var(--border-color); 
+            padding: 6px 12px; 
             border-radius: 4px; 
             cursor: pointer; 
-            font-weight: bold; 
+            font-weight: 600; 
             font-family: inherit;
             font-size: 13px;
-            transition: background 0.1s;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 4px;
         }
         button:hover { 
-            background: #1d4ed8; 
+            background: #3f3f46;
         }
         button.small { 
             padding: 4px 8px; 
             font-size: 11px; 
-            background: #e4e4e7; 
-            color: #18181b;
-            border: 1px solid #d4d4d8;
-        }
-        button.small:hover { 
-            background: #d4d4d8; 
         }
         button.small:disabled {
-            opacity: 0.5;
+            opacity: 0.4;
             cursor: not-allowed;
+            background: #18181b;
+            color: #52525b;
         }
         button.danger {
-            background: #ef4444;
+            background: var(--danger);
             color: white;
-            border: 1px solid #dc2626;
+            border: none;
         }
         button.danger:hover {
-            background: #dc2626;
+            background: #ef4444;
+        }
+        button.btn-accent {
+            background: var(--accent);
+            color: #ffffff;
+            border: none;
+        }
+        button.btn-accent:hover {
+            background: var(--accent-hover);
+        }
+        button.btn-secondary {
+            background: #27272a;
+            border: 1px solid var(--border-color);
+        }
+        button.btn-secondary:hover {
+            background: #3f3f46;
         }
         #preview { 
-            background: repeating-conic-gradient(#e4e4e7 0% 25%, #fafafa 0% 50%) 50% / 20px 20px; 
-            padding: 20px; 
+            background: 
+                linear-gradient(45deg, #141416 25%, transparent 25%), 
+                linear-gradient(-45deg, #141416 25%, transparent 25%), 
+                linear-gradient(45deg, transparent 75%, #141416 75%), 
+                linear-gradient(-45deg, transparent 75%, #141416 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            background-color: #0b0b0c;
+            padding: 15px; 
             border-radius: 6px; 
-            border: 1px solid #e4e4e7;
+            border: 1px solid var(--border-color);
             text-align: center; 
-            margin: 20px 0; 
-            overflow-x: auto;
+            margin: 15px 0; 
+            overflow: hidden;
             display: flex;
             justify-content: center;
             align-items: center;
+            position: relative;
+            cursor: grab;
+            user-select: none;
+            touch-action: none;
         }
         #preview svg { 
-            box-shadow: 0 4px 10px rgba(0,0,0,0.15); 
             background-color: transparent;
-            max-width: 100%;
-            height: auto;
+            border-radius: inherit;
+            display: block;
         }
         .layer-card { 
-            background: #fafafa; 
-            padding: 12px; 
-            margin-bottom: 12px; 
+            background: #18181b; 
+            padding: 10px; 
+            margin-bottom: 10px; 
             border-radius: 6px; 
-            border: 1px solid #e4e4e7;
-            border-left: 3px solid #2563eb; 
+            border: 1px solid var(--border-color);
+            border-left: 3px solid var(--accent); 
         }
         .layer-header { 
             display: flex; 
             justify-content: space-between; 
             margin-bottom: 8px; 
             font-size: 12px; 
-            font-weight: bold;
+            font-weight: 600;
+            color: var(--text-primary);
             align-items: center;
         }
         .layer-header div {
@@ -152,28 +236,32 @@
             gap: 4px;
         }
         .url-box { 
-            background: #f1f5f9; 
-            padding: 12px; 
-            font-size: 12px; 
+            background: var(--bg-input); 
+            padding: 10px; 
+            font-size: 11px; 
             word-break: break-all; 
-            margin-top: 15px; 
+            margin-top: 10px; 
             border-radius: 4px;
-            border: 1px solid #cbd5e1;
-            color: #334155;
+            border: 1px solid var(--border-color);
+            color: var(--text-secondary);
         }
         .url-box strong {
-            color: #0f172a;
+            color: var(--text-primary);
         }
         .hint { 
             font-size: 11px; 
-            color: #71717a; 
+            color: var(--text-secondary); 
             margin-top: 4px; 
         }
         
-        /* Mobile viewport styling */
         @media (max-width: 600px) {
             body {
                 padding: 10px;
+            }
+            .header-container {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 4px;
             }
             .row {
                 flex-direction: column;
@@ -200,7 +288,17 @@
     </style>
 </head>
 <body>
-    <h1>Banner Generator</h1>
+    <div class="header-container">
+        <div>
+            <h1>Banner Generator</h1>
+            <div class="subtitle">Design, customize, and export serverless banners in real-time</div>
+        </div>
+        <a href="https://github.com/adrianpriza-ai/banner-img" target="_blank" rel="noopener noreferrer" class="github-link" title="View on GitHub">
+            <svg height="22" width="22" viewBox="0 0 16 16" fill="currentColor">
+                <path d="M8 0c4.42 0 8 3.58 8 8a8.013 8.013 0 0 1-5.45 7.59c-.4.08-.55-.17-.55-.38 0-.27.01-1.13.01-2.2 0-.75-.25-1.23-.54-1.48 1.78-.2 3.65-.88 3.65-3.95 0-.88-.31-1.59-.82-2.15.08-.2.36-1.02-.08-2.12 0 0-.67-.22-2.2.82-.64-.18-1.32-.27-2-.27-.68 0-1.36.09-2 .27-1.53-1.03-2.2-.82-2.2-.82-.44 1.1-.16 1.92-.08 2.12-.51.56-.82 1.28-.82 2.15 0 3.06 1.86 3.75 3.64 3.95-.23.2-.44.55-.51 1.07-.46.21-1.61.55-2.33-.66-.15-.24-.6-.83-1.23-.82-.67.01-.27.38.01.53.34.19.73.9.82 1.13.16.45.68 1.35 3.06.91 0 1.01.01 1.73.01 1.98 0 .21-.15.46-.55.38A8.013 8.013 0 0 1 0 8c0-4.42 3.58-8 8-8z"/>
+            </svg>
+        </a>
+    </div>
 
     <!-- Canvas configuration -->
     <div class="section">
@@ -250,28 +348,36 @@
     <div class="section">
         <h3>Output & Export</h3>
         <div class="row">
-            <button onclick="downloadPNG()" style="background:#10b981; border-color:#059669;">Download PNG</button>
-            <button onclick="copyEditorUrl()" style="background:#64748b; border-color:#475569;">Copy Editor Link</button>
-            <button onclick="copyMarkdown()" style="background:#64748b; border-color:#475569;">Copy Markdown</button>
-            <button onclick="copyServerUrl()" style="background:#64748b; border-color:#475569;">Copy API URL</button>
+            <button onclick="downloadPNG()" class="btn-accent">Download PNG</button>
+            <button onclick="copyEditorUrl()">Copy Editor Link</button>
+            <button onclick="copyMarkdown()">Copy Markdown</button>
+            <button onclick="copyServerUrl()">Copy API URL</button>
         </div>
     </div>
 
     <!-- Live Preview -->
     <div id="preview">
-        <!-- SVG will be injected inline here -->
+        <div id="preview-viewport" style="transform-origin: center center; width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;">
+            <!-- SVG will be injected inline here -->
+        </div>
+        <!-- Zoom controls -->
+        <div class="zoom-controls" style="position: absolute; right: 10px; top: 10px; display: flex; gap: 5px; z-index: 10;">
+            <button onclick="zoomIn(event)" class="small" style="padding: 4px 8px; width: auto !important;">+</button>
+            <button onclick="zoomOut(event)" class="small" style="padding: 4px 8px; width: auto !important;">-</button>
+            <button onclick="zoomReset(event)" class="small" style="padding: 4px 8px; width: auto !important;">Reset</button>
+        </div>
     </div>
 
     <!-- Raw SVG code and GET link -->
     <div class="section">
         <h3>Raw Details</h3>
-        <div class="col" style="margin-bottom: 15px;">
+        <div class="col" style="margin-bottom: 15px; width: 100%;">
             <label>API URL Endpoint</label>
-            <input id="apiUrlBox" type="text" readonly style="width:100%; font-family:monospace; background:#f4f4f5;">
+            <input id="apiUrlBox" type="text" readonly style="width:100%; font-family:'Fira Code', monospace; background:#18181b; border-color:var(--border-color); color:var(--text-secondary);">
         </div>
-        <div class="col">
+        <div class="col" style="width: 100%;">
             <label>Raw SVG Source</label>
-            <textarea id="rawSvgSource" readonly style="width:100%; height:150px; font-family:monospace; background:#f4f4f5;"></textarea>
+            <textarea id="rawSvgSource" readonly style="width:100%; height:150px; font-family:'Fira Code', monospace; background:#18181b; border-color:var(--border-color); color:var(--text-secondary); resize: none;"></textarea>
         </div>
     </div>
 
@@ -332,7 +438,7 @@
             const nl = formatted ? '\n' : '';
             const tab = formatted ? '  ' : '';
 
-            let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${nl}`;
+            let svg = `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">${nl}`;
             
             // Embed google fonts style links inside CDATA block
             svg += `${tab}<defs>${nl}`;
@@ -427,10 +533,7 @@
         function updatePreview() {
             const svgCode = buildSvgCode(false);
             const formattedSvgCode = buildSvgCode(true);
-
-            // Inject SVG directly inline so all external resource resolution and selection works
-            document.getElementById('preview').innerHTML = svgCode;
-
+            document.getElementById('preview-viewport').innerHTML = svgCode;
             // Update raw source box
             document.getElementById('rawSvgSource').value = formattedSvgCode;
 
@@ -664,7 +767,7 @@
                         a.download = 'banner.png';
                         a.click();
                     } catch (e) {
-                        alert('Local canvas download blocked. Please run a local web server, or upload images directly using file selection to bypass CORS blocks.');
+                        alert('Local canvas download blocked. Please run a local web server, or use absolute, CORS-enabled URLs for your image layers to bypass CORS restrictions.');
                         console.error(e);
                     } finally {
                         URL.revokeObjectURL(blobUrl);
@@ -813,6 +916,57 @@
                 console.error(err);
             }
         }
+
+        // Zoom & Pan state
+        let scale = 1, panX = 0, panY = 0, isDragging = false, startX = 0, startY = 0;
+        const previewEl = document.getElementById('preview');
+        const viewportEl = document.getElementById('preview-viewport');
+        
+        const applyTransform = () => {
+            viewportEl.style.transform = `translate(${panX}px, ${panY}px) scale(${scale})`;
+        };
+        
+        function zoomIn(e) { e.preventDefault(); scale = Math.min(scale * 1.2, 8); applyTransform(); }
+        function zoomOut(e) { e.preventDefault(); scale = Math.max(scale / 1.2, 0.1); applyTransform(); }
+        function zoomReset(e) { e.preventDefault(); scale = 1; panX = 0; panY = 0; applyTransform(); }
+        
+        previewEl.addEventListener('pointerdown', (e) => {
+            if (e.target.closest('.zoom-controls')) return;
+            isDragging = true;
+            startX = e.clientX - panX;
+            startY = e.clientY - panY;
+            previewEl.style.cursor = 'grabbing';
+            previewEl.setPointerCapture(e.pointerId);
+            e.preventDefault();
+        });
+        
+        previewEl.addEventListener('pointermove', (e) => {
+            if (!isDragging) return;
+            panX = e.clientX - startX;
+            panY = e.clientY - startY;
+            applyTransform();
+        });
+        
+        previewEl.addEventListener('pointerup', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                previewEl.style.cursor = 'grab';
+                previewEl.releasePointerCapture(e.pointerId);
+            }
+        });
+        previewEl.addEventListener('pointercancel', (e) => {
+            if (isDragging) {
+                isDragging = false;
+                previewEl.style.cursor = 'grab';
+                previewEl.releasePointerCapture(e.pointerId);
+            }
+        });
+        
+        previewEl.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            scale = e.deltaY < 0 ? Math.min(scale * 1.1, 8) : Math.max(scale / 1.1, 0.1);
+            applyTransform();
+        }, { passive: false });
 
         // Initialize state
         window.addEventListener('DOMContentLoaded', () => {

@@ -1,23 +1,25 @@
 <div align="center">
 
-  ![Banner](http://banner-img.vercel.app/api/banner?w=500&h=100&r=20&bg=%23252525&image=https%253A%252F%252Fimages.jammable.com%252Fvoices%252Fsaiba-momoi-isGxI%252F2ab9d248-9b0f-4891-afd9-16c6b346a2ca.png%2C250%2C-30%2C250%2C250%2C0&text=Banner%2520Img%2C170%2C50%2C40%2C%23ff83d3%2C0%2Cmiddle%2CArial)
+  ![Banner](https://banner-img.vercel.app/api/banner?w=500&h=100&r=20&bg=%23ffffff&text=Banner%2520Img%2C170%2C51%2C41%2C%23000000%2C0%2Cmiddle%2CTimes+New+Roman&image=https%253A%252F%252Fimages.jammable.com%252Fvoices%252Fsaiba-momoi-isGxI%252F2ab9d248-9b0f-4891-afd9-16c6b346a2ca.png%2C250%2C-30%2C250%2C250%2C0&text=Banner%2520Img%2C170%2C50%2C40%2C%23ff83d3%2C0%2Cmiddle%2CTimes+New+Roman)
 
   # Banner Generator API
 
-  A fast, serverless-optimized banner image generator with advanced caching and layer management. Perfect for dynamic social media images, OG tags, and more.
+  A fast, serverless-optimized banner image generator with dynamic rendering and advanced caching. Open Graph (OG) tags, and dynamic text or image overlays.
 
 </div>
 
+---
+
 ## Features
 
-- Dynamic SVG/PNG Generation: Create banners on the fly with text and images
-- Unified Layer System: Text and images in a single list with z-index control
-- Layer Reordering: Move layers up/down with arrow buttons (top layer = rendered on top)
-- Advanced Caching: ETags, CDN caching, font caching, and output caching
-- Google Fonts Support: Inter, Fira Code, Playfair Display with smart fallbacks
-- System Fonts: Arial, Helvetica, Georgia, Times New Roman, Courier New, Verdana with fallback chains
-- Vercel Optimized: Ready for serverless deployment with built-in caching strategies
-- URL Import/Export: Decode banner URLs to edit designs, share configurations via URL
+- **Dynamic SVG/PNG Generation**: Create banners on the fly combining text and images.
+- **Unified Layer System**: Text and image layers handled in a single layout stack.
+- **Visual Web Editor**: Built-in interface to design banners, reorder layers, and preview live.
+- **Advanced Caching**: Edge CDN caching (24 hours), ETag support (304 replies), and persistent font loading.
+- **Google Fonts Support**: Integration with Google Fonts (Inter, Fira Code, Playfair Display) and standard system fonts with automatic fallbacks.
+- **URL Configuration Sync**: Share designs or restore the editor state via URL parameters.
+
+---
 
 ## Quick Start
 
@@ -33,137 +35,97 @@ cd banner-img
 npm install
 npx vercel dev
 ```
+Open `http://localhost:3000` to access the visual web editor.
 
-Visit `http://localhost:3000` for the web interface.
+---
 
-## Usage
+## API Reference
 
-### API Endpoint
+### Banner Generation Endpoint
+`GET /api/banner`
 
-```
-/api/banner?w=800&h=200&bg=%230f172a&text=Hello+World&format=png
-```
+### Query Parameters
 
-### Parameters
-
-| Parameter | Description | Max/Default |
-|-----------|-------------|-------------|
-| w | Width | 2000px / 800 |
-| h | Height | 2000px / 200 |
-| r | Border radius | 200px / 20 |
-| bg | Background color | Hex or transparent |
-| text | Text layers | Comma-separated (see below) |
-| image | Image layers | Comma-separated (see below) |
-| format | Output format | svg or png |
-| download | Force download | true or false |
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `w` / `h` | Integer | `800` / `200` | Canvas width and height in pixels (Max: `2000`) |
+| `r` | Integer | `20` | Border radius in pixels (Max: `200`) |
+| `bg` | String | `transparent` | Background color (URL-encoded Hex or `transparent`) |
+| `text` | String | (Optional) | Text layer definitions (can be specified multiple times) |
+| `image` | String | (Optional) | Image layer definitions (can be specified multiple times) |
+| `format` | String | `svg` | Output format: `svg` or `png` |
+| `download` | Boolean | `false` | Force file download |
 
 ### Text Layer Format
-
-```
+```text
 text=content,x,y,size,color,rotation,anchor,font
 ```
-
-Example: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial` (Note: Hex colors must be URL-encoded, e.g., `#ffffff` as `%23ffffff`)
+*Example*: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial`
 
 ### Image Layer Format
-
-```
+```text
 image=url,x,y,width,height,rotation
 ```
+*Example*: `image=https://example.com/logo.png,50,50,100,100,0`
 
-Example: `image=https://example.com/logo.png,50,50,100,100,0`
+*Layer Ordering*: Layers are processed from left to right. The first layer parameter is rendered at the bottom, and the last layer parameter is rendered on top.
 
-**Layer Ordering**: Parameters are processed in order. The first layer parameter is rendered at the bottom, the last layer parameter is rendered on top.
+### GitHub Version Badge in Text
+You can include GitHub release versions directly in text layers using the `[gitver/owner/repo]` syntax. The API will automatically fetch and replace the pattern with the latest version tag.
+
+**Example:**
+```
+text=New [gitver/adrianpriza-ai/banner-img] Released,600,315,40,#ffffff,0,middle,Inter
+```
+
+This will fetch the latest release version from the specified GitHub repository and display it in the banner. The version is cached for 5 minutes to avoid excessive API calls.
+
+**Notes:**
+- Uses GitHub's public API (rate limited)
+- If the API fails or repository is not found, the original `[gitver/owner/repo]` pattern will be displayed
+- You can use multiple gitver patterns in a single text layer
+- Works with both SVG and PNG output formats
+
+---
 
 ## Examples
 
 ### Simple Text Banner
-
-```
+```http
 /api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter&bg=%231e3a8a&format=png
 ```
 
-### Text + Image Banner
-
-```
-/api/banner?w=1200&h=630&text=My Banner,600,300,50,%23ffffff,0,middle,Arial&image=https://picsum.photos/200,100,50,50,0&bg=%230f172a&format=png
-```
-
-### Multiple Layers
-
-```
-/api/banner?w=1200&h=630&
-image=https://picsum.photos/200,100,100,100,0&
-text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&
-text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&
-bg=%231e3a8a&format=png
+### Multi-Layer Composition
+```http
+/api/banner?w=1200&h=630&image=https://picsum.photos/200,100,100,100,0&text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&bg=%231e3a8a&format=png
 ```
 
-In this example:
-- Image parameter is first, so it renders at the bottom
-- "Top Layer" text renders on top of the image
-- "Bottom Layer" text renders on top of everything (last parameter = top layer)
-
-### Markdown Usage
-
-```markdown
-![Banner](https://banner-img.vercel.app/api/banner?w=1200&h=630&text=Hello+World&format=png)
-```
+---
 
 ## Development
 
-### Project Structure
-
-```
+### Directory Structure
+```text
 banner-img/
 ├── api/
-│   └── banner.js          # Main API endpoint with caching
+│   └── banner.js          # Main API endpoint with caching, rendering logic, and gitver support
 ├── public/
-│   └── index.html         # Web interface with layer management
-├── vercel.json            # Vercel configuration
-├── package.json           # Dependencies
-└── README.md              # This file
+│   └── index.html         # Frontend visual web editor
+├── package.json           # Project metadata & dependencies
+├── vercel.json            # Edge routing, custom headers, and function memory config
+└── README.md              # Project documentation
 ```
 
-### Key Features
+### Performance & Configuration
+- **Optimization**: Powered by Rust-backed `@resvg/resvg-js` for high-performance PNG encoding.
+- **Serverless**: Configured via `vercel.json` with `1024MB` memory and a `10s` timeout.
 
-- **Unified Layer System**: Text and images in a single list with z-index control
-- **Correct Layer Ordering**: Top layer in UI list = rendered on top in final image
-- **Smart Caching**: ETags for conditional requests (304 responses), CDN caching (24 hours), output caching (1 hour), font caching (7 days)
-- **Font Support**: System fonts + Google Fonts with automatic fallback chains
-- **Parameter Order Preservation**: Maintains exact layer ordering from URL parameters
-
-## Web Interface
-
-The included web interface provides:
-
-- **Visual Editor**: Real-time SVG preview as you edit
-- **Unified Layer Management**: Add/remove text and image layers in a single list
-- **Layer Reordering**: Move layers up/down with arrow buttons (top layer = rendered on top)
-- **Export Options**: Download as PNG/SVG, copy URLs, copy Markdown, copy editor links
-- **URL Decoder**: Paste any banner URL to import and edit all settings (canvas, text, image layers)
-- **Shareable Links**: Generate editor links to share designs with others
-
-## Performance
-
-- First request: Full processing (~500-1000ms)
-- Cached requests: 10-100x faster (~5-50ms)
-- Edge caching: Served from nearest Vercel CDN location
-- Font persistence: No repeated downloads across function invocations
-
-## Configuration
-
-The `vercel.json` file includes optimized settings:
-
-- 1024MB memory allocation
-- 10-second function timeout
-- CDN caching headers
-- API route optimization
+---
 
 ## License
 
-MIT License - See LICENSE file for details
+This project is licensed under the [MIT License](LICENSE).
 
 ## Contributing
 
-Contributions welcome! Feel free to submit issues and pull requests.
+Contributions are welcome. Feel free to submit issues and pull requests.

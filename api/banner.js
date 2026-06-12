@@ -6,6 +6,7 @@ const crypto = require('crypto');
 const fontCache = {};
 const localFontPaths = {};
 const outputCache = {};
+const OUTPUT_CACHE_MAX_SIZE = 50; // Limit in-memory cache size (serverless environment)
 
 // Font usage note: This API runs on Vercel servers and uses fonts available in the server environment.
 // System fonts (Arial, Helvetica, Times New Roman, etc.) should work via loadSystemFonts: true.
@@ -17,6 +18,16 @@ const GOOGLE_FONT_FILES = {
     'Fira Code': 'https://fonts.gstatic.com/s/firacode/v27/uU9NCBsR6Z2vfE9aq3bh3dSD.woff2',
     'Playfair Display': 'https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZtu5_iL6WsKxWjVubXXko0.woff2'
 };
+
+// Pre-compiled regex patterns for better performance
+const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}){0,2}$/;
+const LATIN_FONT_BLOCK_REGEX = /\/\* latin \*\/\s*@font-face\s*\{[^}]+\}/g;
+const FONT_URL_REGEX = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
+const GITVER_REGEX = /\[gitver\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)\]/g;
+
+// Cache for GitHub version fetching
+const gitverCache = {};
+const GITVER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 function escapeXml(unsafe) {
     if (!unsafe) return '';
@@ -46,6 +57,64 @@ async function getBase64Image(url) {
 // Generate ETag for caching
 function generateETag(content) {
     return crypto.createHash('md5').update(content).digest('hex');
+}
+
+// Fetch GitHub version for a repository
+async function getGitHubVersion(repo) {
+    const now = Date.now();
+    
+    // Check cache first
+    if (gitverCache[repo] && (now - gitverCache[repo].timestamp < GITVER_CACHE_TTL)) {
+        return gitverCache[repo].version;
+    }
+    
+    try {
+        const githubApiUrl = `https://api.github.com/repos/${repo}/releases/latest`;
+        const response = await fetch(githubApiUrl, {
+            headers: {
+                'User-Agent': 'banner-img-api',
+                'Accept': 'application/vnd.github.v3+json'
+            }
+        });
+
+        if (!response.ok) {
+            console.error(`Failed to fetch version for ${repo}: ${response.status}`);
+            return `[gitver/${repo}]`; // Return original pattern on error
+        }
+
+        const releaseData = await response.json();
+        const version = releaseData.tag_name || releaseData.name || 'unknown';
+        
+        // Cache the result
+        gitverCache[repo] = {
+            version: version,
+            timestamp: now
+        };
+        
+        return version;
+    } catch (err) {
+        console.error(`Error fetching version for ${repo}:`, err);
+        return `[gitver/${repo}]`; // Return original pattern on error
+    }
+}
+
+// Replace gitver patterns in text with actual versions
+async function replaceGitverPatterns(text) {
+    const matches = text.match(GITVER_REGEX);
+    if (!matches) return text;
+    
+    let result = text;
+    
+    // Process each unique repo
+    const uniqueRepos = [...new Set(matches.map(m => m.match(/\[gitver\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)\]/)[1]))];
+    
+    for (const repo of uniqueRepos) {
+        const pattern = `[gitver/${repo}]`;
+        const version = await getGitHubVersion(repo);
+        result = result.split(pattern).join(version);
+    }
+    
+    return result;
 }
 
 // Generate cache key from query parameters
@@ -113,17 +182,19 @@ async function compileFonts(fontFamilies) {
             paths.push(...localFontPaths[font]);
             
             // Verify files still exist on disk
+            let cacheValid = true;
             for (const fontPath of localFontPaths[font]) {
                 if (!fs.existsSync(fontPath)) {
                     // Cache invalidation - file missing
                     delete fontCache[font];
                     delete localFontPaths[font];
                     delete persistentCache[font];
+                    cacheValid = false;
                     break;
                 }
             }
             
-            if (fontCache[font]) continue; // Cache is valid
+            if (cacheValid && fontCache[font]) continue; // Cache is valid
         }
         
         try {
@@ -138,10 +209,9 @@ async function compileFonts(fontFamilies) {
             let cssText = await cssRes.text();
             
             // 2. Extract only /* latin */ subset blocks to keep payload size lightweight
-            const regex = /\/\* latin \*\/\s*@font-face\s*\{[^}]+\}/g;
             let match;
             const blocks = [];
-            while ((match = regex.exec(cssText)) !== null) {
+            while ((match = LATIN_FONT_BLOCK_REGEX.exec(cssText)) !== null) {
                 blocks.push(match[0]);
             }
             
@@ -153,10 +223,9 @@ async function compileFonts(fontFamilies) {
             const fontPaths = [];
             
             // 3. Extract font URLs from matching blocks
-            const urlRegex = /url\((https:\/\/fonts\.gstatic\.com\/[^)]+)\)/g;
             const urlMatches = [];
             let urlMatch;
-            while ((urlMatch = urlRegex.exec(compiledCss)) !== null) {
+            while ((urlMatch = FONT_URL_REGEX.exec(compiledCss)) !== null) {
                 urlMatches.push(urlMatch[1]);
             }
             
@@ -173,10 +242,18 @@ async function compileFonts(fontFamilies) {
                     buffer = fs.readFileSync(localPath);
                 } else {
                     const fontRes = await fetch(fontUrl);
-                    if (!fontRes.ok) continue;
+                    if (!fontRes.ok) {
+                        console.error(`Failed to fetch font file: ${fontUrl} - HTTP ${fontRes.status}`);
+                        continue;
+                    }
                     const arrayBuffer = await fontRes.arrayBuffer();
                     buffer = Buffer.from(arrayBuffer);
-                    fs.writeFileSync(localPath, buffer);
+                    try {
+                        fs.writeFileSync(localPath, buffer);
+                    } catch (writeErr) {
+                        console.error(`Failed to write font file to ${localPath}:`, writeErr);
+                        continue;
+                    }
                 }
                 
                 fontPaths.push(localPath);
@@ -243,6 +320,16 @@ module.exports = async (req, res) => {
                 delete outputCache[cacheKey];
             }
         }
+        
+        // Limit cache size to prevent memory issues in serverless environment
+        const cacheKeys = Object.keys(outputCache);
+        if (cacheKeys.length >= OUTPUT_CACHE_MAX_SIZE) {
+            // Remove oldest entries
+            const sortedKeys = cacheKeys.sort((a, b) => outputCache[a].timestamp - outputCache[b].timestamp);
+            for (let i = 0; i < Math.floor(OUTPUT_CACHE_MAX_SIZE / 2); i++) {
+                delete outputCache[sortedKeys[i]];
+            }
+        }
 
         // Canvas settings
         const w = Math.min(parseInt(q.w) || 800, 2000);
@@ -252,12 +339,13 @@ module.exports = async (req, res) => {
         
         // Background color validation
         let bg = q.bg || '#0f172a';
-        if (bg !== 'transparent' && !bg.match(/^#[0-9a-fA-F]{3,8}$/)) {
+        if (bg !== 'transparent' && !HEX_COLOR_REGEX.test(bg)) {
             bg = '#0f172a';
         }
 
         // Parse layers preserving parameter order
         const allLayers = [];
+        const imageUrlsToFetch = [];
         
         // Get raw query string to preserve parameter order
         const rawQuery = req.url.split('?')[1];
@@ -266,7 +354,7 @@ module.exports = async (req, res) => {
             let layerCount = 0;
             
             for (const pair of paramPairs) {
-                if (layerCount >= 20) break; // Max 10 text + 10 image layers
+                if (layerCount >= 20) break; // Max 20 total layers
                 
                 const [key, value] = pair.split('=');
                 if (!key || !value) continue;
@@ -279,7 +367,7 @@ module.exports = async (req, res) => {
                     if (!parts[0]) continue;
                     
                     let content = parts[0];
-                    try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) {}
+                    try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) { content = parts[0]; }
                     content = content.slice(0, 200);
                     
                     const x = parseFloat(parts[1]) || w / 2;
@@ -287,7 +375,7 @@ module.exports = async (req, res) => {
                     const fontSize = Math.min(parseFloat(parts[3]) || 36, 200);
                     
                     let color = parts[4] || '#ffffff';
-                    if (!color.match(/^#[0-9a-fA-F]{3,8}$/)) {
+                    if (!HEX_COLOR_REGEX.test(color)) {
                         color = '#ffffff';
                     }
                     
@@ -304,13 +392,8 @@ module.exports = async (req, res) => {
                     if (!parts[0]) continue;
                     
                     let url = parts[0];
-                    try { url = decodeURIComponent(url.replace(/\+/g, ' ')); } catch(e) {}
+                    try { url = decodeURIComponent(url.replace(/\+/g, ' ')); } catch(e) { url = parts[0]; }
                     url = url.slice(0, 1000);
-                    
-                    // Fetch and inline external image to base64
-                    if (url.startsWith('http')) {
-                        url = await getBase64Image(url);
-                    }
                     
                     const x = parseFloat(parts[1]) || 10;
                     const y = parseFloat(parts[2]) || 10;
@@ -319,10 +402,29 @@ module.exports = async (req, res) => {
                     const rotation = parseFloat(parts[5]) || 0;
                     
                     if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height) && !isNaN(rotation)) {
-                        allLayers.push({ type: 'image', url, x, y, width, height, rotation });
+                        allLayers.push({ type: 'image', url, x, y, width, height, rotation, needsFetch: url.startsWith('http') });
+                        if (url.startsWith('http')) {
+                            imageUrlsToFetch.push({ index: allLayers.length - 1, url });
+                        }
                         layerCount++;
                     }
                 }
+            }
+        }
+        
+        // Fetch external images in parallel for better performance
+        if (imageUrlsToFetch.length > 0) {
+            const fetchPromises = imageUrlsToFetch.map(async ({ index, url }) => {
+                const base64Url = await getBase64Image(url);
+                allLayers[index].url = base64Url;
+            });
+            await Promise.all(fetchPromises);
+        }
+        
+        // Replace gitver patterns in text layers with actual versions
+        for (const layer of allLayers) {
+            if (layer.type === 'text') {
+                layer.content = await replaceGitverPatterns(layer.content);
             }
         }
 
