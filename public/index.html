@@ -75,6 +75,19 @@
             margin-bottom: 12px; 
             border: 1px solid var(--border-color);
         }
+        
+        @media (max-width: 500px) {
+            .section {
+                padding: 10px;
+            }
+            button {
+                padding: 6px 10px;
+                font-size: 12px;
+            }
+            input, select {
+                font-size: 13px;
+            }
+        }
         h3 { 
             margin-top: 0; 
             border-bottom: 1px solid var(--border-color); 
@@ -139,12 +152,12 @@
             background: #27272a;
             color: var(--text-primary); 
             border: 1px solid var(--border-color); 
-            padding: 6px 12px; 
+            padding: 5px 10px; 
             border-radius: 4px; 
             cursor: pointer; 
             font-weight: 600; 
             font-family: inherit;
-            font-size: 13px;
+            font-size: 12px;
             display: inline-flex;
             align-items: center;
             justify-content: center;
@@ -154,14 +167,31 @@
             background: #3f3f46;
         }
         button.small { 
-            padding: 4px 8px; 
-            font-size: 11px; 
+            padding: 3px 6px; 
+            font-size: 10px; 
         }
         button.small:disabled {
             opacity: 0.4;
             cursor: not-allowed;
             background: #18181b;
             color: #52525b;
+        }
+        button.success {
+            background: var(--success);
+            color: white;
+            border: none;
+        }
+        button.success:hover {
+            background: #059669;
+        }
+        
+        @media (hover: none) {
+            button.success:hover {
+                background: var(--success);
+            }
+            button.danger:hover {
+                background: var(--danger);
+            }
         }
         button.danger {
             background: var(--danger);
@@ -254,35 +284,115 @@
             margin-top: 4px; 
         }
         
+        .layer-header {
+            flex-wrap: wrap;
+        }
+        
+        @media (max-width: 400px) {
+            .layer-header > div {
+                flex-wrap: wrap;
+            }
+            .layer-header > div button {
+                min-width: calc(33% - 3px);
+                font-size: 10px !important;
+                padding: 5px 3px !important;
+            }
+            button {
+                font-size: 11px !important;
+                padding: 6px 8px !important;
+            }
+            input, select {
+                font-size: 12px !important;
+            }
+        }
+        
         @media (max-width: 600px) {
             body {
-                padding: 10px;
+                padding: 8px;
             }
             .header-container {
                 flex-direction: column;
                 align-items: flex-start;
-                gap: 4px;
+                gap: 8px;
             }
             .row {
                 flex-direction: column;
                 align-items: stretch;
-                gap: 8px;
+                gap: 10px;
             }
-            input, select, button {
+            input, select {
+                width: 100% !important;
+                font-size: 14px !important;
+            }
+            button {
+                width: 100% !important;
+                font-size: 12px !important;
+                padding: 8px 10px !important;
+            }
+            input[type="number"] {
                 width: 100% !important;
             }
             input[type="color"] {
-                height: 38px;
+                height: 36px;
+                width: 100% !important;
             }
             .layer-card .row {
-                flex-direction: row;
+                flex-direction: column;
+                gap: 8px;
             }
             .layer-card .row > div {
                 flex: 1;
-                min-width: 45%;
+                width: 100%;
+                min-width: 100%;
             }
             .layer-card .row > div.full-width {
                 min-width: 100%;
+            }
+            .layer-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 6px;
+            }
+            .layer-header > div {
+                width: 100%;
+                display: flex;
+                flex-wrap: wrap;
+                gap: 4px;
+            }
+            .layer-header > div button {
+                flex: 1;
+                min-width: calc(50% - 2px);
+                padding: 6px 4px;
+                font-size: 11px !important;
+            }
+            .section {
+                padding: 10px;
+            }
+            h1 {
+                font-size: 18px;
+            }
+            .subtitle {
+                font-size: 10px;
+            }
+            #preview {
+                padding: 8px;
+                min-height: 180px;
+            }
+            .zoom-controls {
+                flex-direction: column;
+                gap: 3px;
+                right: 6px;
+                top: 6px;
+            }
+            .zoom-controls button {
+                width: auto !important;
+                min-width: 30px;
+                padding: 4px 8px !important;
+                font-size: 11px !important;
+            }
+            /* Stack output buttons on mobile */
+            #layersContainer + .section .row {
+                flex-direction: column;
             }
         }
     </style>
@@ -384,8 +494,8 @@
     <script>
         // Unified layer system
         let layers = [
-            { type: 'text', content: "Hello World", x: 400, y: 100, fontSize: 40, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial" },
-            { type: 'image', url: "https://picsum.photos/id/104/80/80", x: 20, y: 60, width: 80, height: 80, rotation: 0 }
+            { type: 'text', content: "New [gitver/adrianpriza-ai/alps] Released", x: 400, y: 100, fontSize: 40, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial", clip: true },
+            { type: 'image', url: "https://picsum.photos/id/104/80/80", x: 20, y: 60, width: 80, height: 80, rotation: 0, clip: true }
         ];
 
         let debounceTimer = null;
@@ -426,6 +536,12 @@
             });
         }
 
+        // Helper function to replace gitver patterns with preview version
+        function previewGitverPatterns(text) {
+            if (!text) return text;
+            return text.replace(/\[gitver\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\]/g, 'v1.0.0');
+        }
+
         // SVG String Generator
         function buildSvgCode(formatted = false) {
             const w = parseInt(document.getElementById('w').value) || 800;
@@ -447,6 +563,18 @@
             svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');${nl}`;
             svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');${nl}`;
             svg += `${tab}${tab}]]></style>${nl}`;
+            
+            // Add per-layer clip paths for layers that have clipping enabled
+            let clipCounter = 0;
+            for (let i = layers.length - 1; i >= 0; i--) {
+                const layer = layers[i];
+                if (layer.clip) {
+                    svg += `${tab}${tab}<clipPath id="clip-${clipCounter}"><rect width="100%" height="100%" rx="${radius}"/></clipPath>${nl}`;
+                    layer.clipId = `clip-${clipCounter}`;
+                    clipCounter++;
+                }
+            }
+            
             svg += `${tab}</defs>${nl}`;
 
             svg += `${tab}<rect width="100%" height="100%" rx="${radius}" fill="${bgVal}"/>${nl}`;
@@ -457,19 +585,23 @@
                 if (layer.type === 'image') {
                     if (!layer.url) continue;
                     const urlEscaped = escapeXml(layer.url);
+                    const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
+                    
                     if (layer.rotation === 0) {
-                        svg += `${tab}<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>${nl}`;
+                        svg += `${tab}<g${clipAttr}><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/></g>${nl}`;
                     } else {
-                        svg += `${tab}<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>${nl}`;
+                        svg += `${tab}<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"${clipAttr}><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>${nl}`;
                     }
                 } else if (layer.type === 'text') {
-                    const contentEscaped = escapeXml(layer.content);
+                    const previewContent = previewGitverPatterns(layer.content);
+                    const contentEscaped = escapeXml(previewContent);
                     if (!contentEscaped) continue;
                     let transform = '';
                     if (layer.rotation !== 0) {
                         transform = ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"`;
                     }
-                    svg += `${tab}<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text>${nl}`;
+                    const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
+                    svg += `${tab}<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text></g>${nl}`;
                 }
             }
 
@@ -492,11 +624,11 @@
                 const layer = layers[i];
                 if (layer.type === 'text') {
                     const encodedContent = encodeURIComponent(layer.content);
-                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily, layer.clip ? 'true' : 'false'];
                     params.append('text', parts.join(','));
                 } else if (layer.type === 'image') {
                     const encodedUrl = encodeURIComponent(layer.url);
-                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.clip ? 'true' : 'false'];
                     params.append('image', parts.join(','));
                 }
             }
@@ -518,11 +650,11 @@
                 const layer = layers[i];
                 if (layer.type === 'text') {
                     const encodedContent = encodeURIComponent(layer.content);
-                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily];
+                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily, layer.clip ? 'true' : 'false'];
                     params.append('text', parts.join(','));
                 } else if (layer.type === 'image') {
                     const encodedUrl = encodeURIComponent(layer.url);
-                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation];
+                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.clip ? 'true' : 'false'];
                     params.append('image', parts.join(','));
                 }
             }
@@ -562,11 +694,16 @@
                             <div>
                                 <button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
                                 <button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
+                                <button class="small success" onclick="duplicateLayer(${idx})">Duplicate</button>
                                 <button class="small danger" onclick="removeLayer(${idx})">Remove</button>
                             </div>
                         </div>
                         <div class="row">
-                            <div class="full-width" style="flex:2;"><label>Content</label><input class="txt-content" value="${escapeXml(layer.content)}" style="width:100%"></div>
+                            <div class="full-width" style="flex:2;">
+                                <label>Content</label>
+                                <input class="txt-content" value="${escapeXml(layer.content)}" style="width:100%">
+                                <div class="hint">Use [gitver/owner/repo] for auto version fetching (preview shows v1.0.0)</div>
+                            </div>
                             <div><label>X</label><input class="txt-x" type="number" value="${layer.x}"></div>
                             <div><label>Y</label><input class="txt-y" type="number" value="${layer.y}"></div>
                             <div><label>Size</label><input class="txt-size" type="number" value="${layer.fontSize}"></div>
@@ -600,19 +737,26 @@
                                     <option value="Playfair Display" ${layer.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display (Google)</option>
                                 </select>
                             </div>
+                            <div>
+                                <label>Clip</label>
+                                <input class="txt-clip" type="checkbox" ${layer.clip ? 'checked' : ''} style="width:auto;">
+                            </div>
                         </div>
                     `;
 
                     // Update data logic
                     const syncData = () => {
                         layers[idx].content = div.querySelector('.txt-content').value;
-                        layers[idx].x = parseFloat(div.querySelector('.txt-x').value) || 0;
-                        layers[idx].y = parseFloat(div.querySelector('.txt-y').value) || 0;
+                        let x = parseFloat(div.querySelector('.txt-x').value);
+                        let y = parseFloat(div.querySelector('.txt-y').value);
+                        layers[idx].x = isNaN(x) ? 0 : x;
+                        layers[idx].y = isNaN(y) ? 0 : y;
                         layers[idx].fontSize = parseFloat(div.querySelector('.txt-size').value) || 10;
                         layers[idx].color = div.querySelector('.txt-color-hex').value;
                         layers[idx].rotation = parseFloat(div.querySelector('.txt-rot').value) || 0;
                         layers[idx].anchor = div.querySelector('.txt-anchor').value;
                         layers[idx].fontFamily = div.querySelector('.txt-font').value;
+                        layers[idx].clip = div.querySelector('.txt-clip').checked;
                         debouncedUpdate();
                     };
 
@@ -645,6 +789,7 @@
                             <div>
                                 <button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
                                 <button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
+                                <button class="small success" onclick="duplicateLayer(${idx})">Duplicate</button>
                                 <button class="small danger" onclick="removeLayer(${idx})">Remove</button>
                             </div>
                         </div>
@@ -652,6 +797,7 @@
                             <div class="full-width" style="flex:3;">
                                 <label>Image Source URL</label>
                                 <input class="img-url" value="${escapeXml(layer.url.startsWith('data:') ? '[Base64 Image]' : layer.url)}" style="width:100%" placeholder="https://example.com/logo.png">
+                                <div class="hint">Supports PNG, JPG, GIF, SVG, WebP, and base64 data URLs</div>
                             </div>
                         </div>
                         <div class="row">
@@ -660,6 +806,10 @@
                             <div><label>Width</label><input class="img-w" type="number" value="${layer.width}"></div>
                             <div><label>Height</label><input class="img-h" type="number" value="${layer.height}"></div>
                             <div><label>Rotation</label><input class="img-rot" type="number" value="${layer.rotation}"></div>
+                            <div>
+                                <label>Clip</label>
+                                <input class="img-clip" type="checkbox" ${layer.clip ? 'checked' : ''} style="width:auto;">
+                            </div>
                         </div>
                     `;
 
@@ -668,11 +818,14 @@
                         if (rawUrl !== '[Base64 Image]') {
                             layers[idx].url = rawUrl;
                         }
-                        layers[idx].x = parseFloat(div.querySelector('.img-x').value) || 0;
-                        layers[idx].y = parseFloat(div.querySelector('.img-y').value) || 0;
+                        let x = parseFloat(div.querySelector('.img-x').value);
+                        let y = parseFloat(div.querySelector('.img-y').value);
+                        layers[idx].x = isNaN(x) ? 0 : x;
+                        layers[idx].y = isNaN(y) ? 0 : y;
                         layers[idx].width = parseFloat(div.querySelector('.img-w').value) || 0;
                         layers[idx].height = parseFloat(div.querySelector('.img-h').value) || 0;
                         layers[idx].rotation = parseFloat(div.querySelector('.img-rot').value) || 0;
+                        layers[idx].clip = div.querySelector('.img-clip').checked;
                         debouncedUpdate();
                     };
 
@@ -704,16 +857,26 @@
             debouncedUpdate();
         }
 
+        function duplicateLayer(idx) {
+            const duplicate = { ...layers[idx] };
+            // Offset position slightly so they don't overlap completely
+            duplicate.x += 20;
+            duplicate.y += 20;
+            layers.splice(idx + 1, 0, duplicate);
+            renderLayers();
+            debouncedUpdate();
+        }
+
         document.getElementById('addTextBtn').onclick = () => {
             const w = parseInt(document.getElementById('w').value) || 800;
             const h = parseInt(document.getElementById('h').value) || 200;
-            layers.push({ type: 'text', content: "New text", x: Math.round(w/2), y: Math.round(h/2), fontSize: 32, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial" });
+            layers.push({ type: 'text', content: "New text", x: Math.round(w/2), y: Math.round(h/2), fontSize: 32, color: "#ffffff", rotation: 0, anchor: "middle", fontFamily: "Arial", clip: true });
             renderLayers();
             debouncedUpdate();
         };
         
         document.getElementById('addImageBtn').onclick = () => {
-            layers.push({ type: 'image', url: "https://picsum.photos/id/102/80/80", x: 50, y: 60, width: 80, height: 80, rotation: 0 });
+            layers.push({ type: 'image', url: "https://picsum.photos/id/102/80/80", x: 50, y: 60, width: 80, height: 80, rotation: 0, clip: true });
             renderLayers();
             debouncedUpdate();
         };
@@ -877,15 +1040,18 @@
                             let content = parts[0];
                             try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) {}
                             
-                            const x = parseFloat(parts[1]) || 0;
-                            const y = parseFloat(parts[2]) || 0;
+                            let x = parseFloat(parts[1]);
+                            let y = parseFloat(parts[2]);
+                            if (isNaN(x)) x = 0;
+                            if (isNaN(y)) y = 0;
                             const fontSize = parseFloat(parts[3]) || 24;
                             const color = parts[4] || '#ffffff';
                             const rotation = parseFloat(parts[5]) || 0;
                             const anchor = parts[6] || 'middle';
                             const fontFamily = parts[7] || 'Arial';
+                            const clip = (parts[8] || 'true') === 'true';
 
-                            layers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
+                            layers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily, clip });
                         } else if (decodedKey === 'image') {
                             const parts = decodedValue.split(',');
                             if (!parts[0]) continue;
@@ -893,13 +1059,16 @@
                             let urlVal = parts[0];
                             try { urlVal = decodeURIComponent(urlVal.replace(/\+/g, ' ')); } catch(e) {}
                             
-                            const x = parseFloat(parts[1]) || 0;
-                            const y = parseFloat(parts[2]) || 0;
+                            let x = parseFloat(parts[1]);
+                            let y = parseFloat(parts[2]);
+                            if (isNaN(x)) x = 0;
+                            if (isNaN(y)) y = 0;
                             const width = parseFloat(parts[3]) || 60;
                             const height = parseFloat(parts[4]) || 60;
                             const rotation = parseFloat(parts[5]) || 0;
+                            const clip = (parts[6] || 'true') === 'true';
 
-                            layers.push({ type: 'image', url: urlVal, x, y, width, height, rotation });
+                            layers.push({ type: 'image', url: urlVal, x, y, width, height, rotation, clip });
                         }
                     }
                 }

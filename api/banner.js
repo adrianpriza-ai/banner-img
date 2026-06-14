@@ -29,6 +29,142 @@ const GITVER_REGEX = /\[gitver\/([a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+)\]/g;
 const gitverCache = {};
 const GITVER_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
+// Bot protection configuration
+const RATE_LIMIT = {
+    requests: 100,        // requests per window
+    window: 60 * 1000,    // 1 minute window
+    cleanupInterval: 5 * 60 * 1000 // cleanup old entries every 5 minutes
+};
+
+const rateLimitStore = {};
+const SUSPICIOUS_PATTERNS = {
+    // Common bot user agents
+    userAgents: [
+        /bot/i,
+        /crawler/i,
+        /spider/i,
+        /scraper/i,
+        /curl/i,
+        /wget/i,
+        /python/i,
+        /java/i,
+        /go-http/i,
+        /headless/i,
+        /phantom/i,
+        /selenium/i,
+        /chromedriver/i,
+        /requests/i,
+        /libwww/i,
+        /lwp/i,
+        /wget/i
+    ],
+    // Suspicious request patterns
+    paths: [
+        /\.env$/i,
+        /\.git/i,
+        /admin/i,
+        /config/i,
+        /wp-admin/i,
+        /phpmyadmin/i,
+        /sql/i,
+        /backup/i
+    ]
+};
+
+// Initialize cleanup interval for rate limit store
+if (typeof setInterval !== 'undefined') {
+    setInterval(() => {
+        const now = Date.now();
+        for (const ip in rateLimitStore) {
+            if (now - rateLimitStore[ip].resetTime > RATE_LIMIT.cleanupInterval) {
+                delete rateLimitStore[ip];
+            }
+        }
+    }, RATE_LIMIT.cleanupInterval);
+}
+
+// Extract client IP from request
+function getClientIP(req) {
+    return req.headers['x-forwarded-for']?.split(',')[0]?.trim() ||
+           req.headers['x-real-ip'] ||
+           req.connection?.remoteAddress ||
+           req.socket?.remoteAddress ||
+           'unknown';
+}
+
+// Check if user agent looks like a bot
+function isSuspiciousUserAgent(userAgent) {
+    if (!userAgent) return true; // Empty UA is suspicious
+    
+    const ua = userAgent.toLowerCase();
+    
+    // Allow common browsers
+    const legitimateBrowsers = [
+        'mozilla', 'chrome', 'safari', 'firefox', 'edge', 'opera',
+        'brave', 'vivaldi', 'duckduckgo', 'samsung', 'mobile'
+    ];
+    
+    if (legitimateBrowsers.some(browser => ua.includes(browser))) {
+        return false;
+    }
+    
+    // Check against suspicious patterns
+    return SUSPICIOUS_PATTERNS.userAgents.some(pattern => pattern.test(userAgent));
+}
+
+// Rate limiting middleware
+function checkRateLimit(ip) {
+    const now = Date.now();
+    
+    if (!rateLimitStore[ip]) {
+        rateLimitStore[ip] = {
+            count: 1,
+            resetTime: now + RATE_LIMIT.window
+        };
+        return { allowed: true, remaining: RATE_LIMIT.requests - 1 };
+    }
+    
+    // Reset if window expired
+    if (now > rateLimitStore[ip].resetTime) {
+        rateLimitStore[ip] = {
+            count: 1,
+            resetTime: now + RATE_LIMIT.window
+        };
+        return { allowed: true, remaining: RATE_LIMIT.requests - 1 };
+    }
+    
+    // Check if over limit
+    if (rateLimitStore[ip].count >= RATE_LIMIT.requests) {
+        return {
+            allowed: false,
+            remaining: 0,
+            resetTime: rateLimitStore[ip].resetTime
+        };
+    }
+    
+    rateLimitStore[ip].count++;
+    return {
+        allowed: true,
+        remaining: RATE_LIMIT.requests - rateLimitStore[ip].count
+    };
+}
+
+// Check for suspicious request patterns
+function hasSuspiciousPatterns(url, headers) {
+    // Check URL path for suspicious patterns
+    const pathname = url.split('?')[0];
+    if (SUSPICIOUS_PATTERNS.paths.some(pattern => pattern.test(pathname))) {
+        return true;
+    }
+    
+    // Check for missing common headers
+    if (!headers['user-agent']) {
+        return true;
+    }
+    
+    return false;
+}
+
 function escapeXml(unsafe) {
     if (!unsafe) return '';
     return unsafe.replace(/[<>&'"]/g, (c) => {
@@ -292,6 +428,42 @@ async function compileFonts(fontFamilies) {
 
 module.exports = async (req, res) => {
     try {
+        // Bot protection checks
+        const clientIP = getClientIP(req);
+        const userAgent = req.headers['user-agent'] || '';
+        
+        // Check for suspicious request patterns
+        if (hasSuspiciousPatterns(req.url, req.headers)) {
+            console.warn(`Suspicious pattern detected from IP: ${clientIP}, UA: ${userAgent}`);
+            res.status(403).json({ error: 'Access denied' });
+            return;
+        }
+        
+        // Check User-Agent
+        if (isSuspiciousUserAgent(userAgent)) {
+            console.warn(`Suspicious User-Agent blocked from IP: ${clientIP}, UA: ${userAgent}`);
+            res.status(403).json({ error: 'Access denied - invalid user agent' });
+            return;
+        }
+        
+        // Rate limiting
+        const rateLimitResult = checkRateLimit(clientIP);
+        if (!rateLimitResult.allowed) {
+            const retryAfter = Math.ceil((rateLimitResult.resetTime - Date.now()) / 1000);
+            res.setHeader('Retry-After', retryAfter);
+            res.setHeader('X-RateLimit-Limit', RATE_LIMIT.requests);
+            res.setHeader('X-RateLimit-Remaining', 0);
+            res.status(429).json({ 
+                error: 'Too many requests',
+                retryAfter: retryAfter 
+            });
+            return;
+        }
+        
+        // Add rate limit headers to successful requests
+        res.setHeader('X-RateLimit-Limit', RATE_LIMIT.requests);
+        res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
+        
         const q = req.query;
         
         // Check output cache for existing response
@@ -370,8 +542,10 @@ module.exports = async (req, res) => {
                     try { content = decodeURIComponent(content.replace(/\+/g, ' ')); } catch(e) { content = parts[0]; }
                     content = content.slice(0, 200);
                     
-                    const x = parseFloat(parts[1]) || w / 2;
-                    const y = parseFloat(parts[2]) || h / 2;
+                    let x = parseFloat(parts[1]);
+                    let y = parseFloat(parts[2]);
+                    if (isNaN(x)) x = w / 2;
+                    if (isNaN(y)) y = h / 2;
                     const fontSize = Math.min(parseFloat(parts[3]) || 36, 200);
                     
                     let color = parts[4] || '#ffffff';
@@ -382,9 +556,10 @@ module.exports = async (req, res) => {
                     const rotation = parseFloat(parts[5]) || 0;
                     const anchor = ['start', 'middle', 'end'].includes(parts[6]) ? parts[6] : 'middle';
                     const fontFamily = (parts[7] || 'Arial').slice(0, 50);
+                    const clip = (parts[8] || 'true') === 'true';
                     
-                    if (!isNaN(x) && !isNaN(y) && !isNaN(fontSize) && !isNaN(rotation)) {
-                        allLayers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily });
+                    if (!isNaN(fontSize) && !isNaN(rotation)) {
+                        allLayers.push({ type: 'text', content, x, y, fontSize, color, rotation, anchor, fontFamily, clip });
                         layerCount++;
                     }
                 } else if (decodedKey === 'image') {
@@ -395,14 +570,17 @@ module.exports = async (req, res) => {
                     try { url = decodeURIComponent(url.replace(/\+/g, ' ')); } catch(e) { url = parts[0]; }
                     url = url.slice(0, 1000);
                     
-                    const x = parseFloat(parts[1]) || 10;
-                    const y = parseFloat(parts[2]) || 10;
+                    let x = parseFloat(parts[1]);
+                    let y = parseFloat(parts[2]);
+                    if (isNaN(x)) x = 10;
+                    if (isNaN(y)) y = 10;
                     const width = parseFloat(parts[3]) || 60;
                     const height = parseFloat(parts[4]) || 60;
                     const rotation = parseFloat(parts[5]) || 0;
+                    const clip = (parts[6] || 'true') === 'true';
                     
-                    if (!isNaN(x) && !isNaN(y) && !isNaN(width) && !isNaN(height) && !isNaN(rotation)) {
-                        allLayers.push({ type: 'image', url, x, y, width, height, rotation, needsFetch: url.startsWith('http') });
+                    if (!isNaN(width) && !isNaN(height) && !isNaN(rotation)) {
+                        allLayers.push({ type: 'image', url, x, y, width, height, rotation, clip, needsFetch: url.startsWith('http') });
                         if (url.startsWith('http')) {
                             imageUrlsToFetch.push({ index: allLayers.length - 1, url });
                         }
@@ -450,7 +628,19 @@ module.exports = async (req, res) => {
             svg += `@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');`;
             svg += `@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');`;
         }
-        svg += `]]></style></defs>`;
+        svg += `]]></style>`;
+        
+        // Add per-layer clip paths for layers that have clipping enabled
+        let clipCounter = 0;
+        for (const layer of allLayers) {
+            if (layer.clip) {
+                svg += `<clipPath id="clip-${clipCounter}"><rect width="100%" height="100%" rx="${radius}"/></clipPath>`;
+                layer.clipId = `clip-${clipCounter}`;
+                clipCounter++;
+            }
+        }
+        
+        svg += `</defs>`;
 
         const fillBg = bg === 'transparent' ? 'none' : bg;
         svg += `<rect width="100%" height="100%" rx="${radius}" fill="${fillBg}"/>`;
@@ -459,10 +649,12 @@ module.exports = async (req, res) => {
         for (const layer of allLayers) {
             if (layer.type === 'image') {
                 const urlEscaped = escapeXml(layer.url);
+                const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
+                
                 if (layer.rotation === 0) {
-                    svg += `<image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/>`;
+                    svg += `<g${clipAttr}><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="${layer.x}" y="${layer.y}" width="${layer.width}" height="${layer.height}"/></g>`;
                 } else {
-                    svg += `<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>`;
+                    svg += `<g transform="translate(${layer.x},${layer.y}) rotate(${layer.rotation})"${clipAttr}><image href="${urlEscaped}" xlink:href="${urlEscaped}" x="0" y="0" width="${layer.width}" height="${layer.height}"/></g>`;
                 }
             } else if (layer.type === 'text') {
                 const content = escapeXml(layer.content);
@@ -488,9 +680,11 @@ module.exports = async (req, res) => {
                     fontFamilyStack = fallbackMap[fontFamily];
                 }
                 
-                svg += `<text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${fontFamilyStack}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${content}</text>`;
+                const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
+                svg += `<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${fontFamilyStack}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${content}</text></g>`;
             }
         }
+        
         svg += `</svg>`;
 
         // Handle format response
