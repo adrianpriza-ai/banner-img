@@ -4,7 +4,7 @@
 
   # Banner Generator API
 
-  A fast, serverless-optimized banner image generator with dynamic rendering and advanced caching. Open Graph (OG) tags, and dynamic text or image overlays.
+  Generate banner images from URL parameters with text layers, image layers, custom fonts, and a built-in editor.
 
 </div>
 
@@ -12,12 +12,11 @@
 
 ## Features
 
-- **Dynamic SVG/PNG Generation**: Create banners on the fly combining text and images.
-- **Unified Layer System**: Text and image layers handled in a single layout stack.
-- **Visual Web Editor**: Built-in interface to design banners, reorder layers, and preview live.
-- **Advanced Caching**: Edge CDN caching (24 hours), ETag support (304 replies), and persistent font loading.
-- **Google Fonts Support**: Integration with Google Fonts (Inter, Fira Code, Playfair Display) and standard system fonts with automatic fallbacks.
-- **URL Configuration Sync**: Share designs or restore the editor state via URL parameters.
+- Generate SVG or PNG banners from a single HTTP endpoint
+- Stack multiple text and image layers in one banner
+- Use the visual editor to build layouts and preview output
+- Load supported Google Fonts with system font fallbacks
+- Reuse generated output with caching and ETag support
 
 ---
 
@@ -37,12 +36,57 @@ npx vercel dev
 ```
 Open `http://localhost:3000` to access the visual web editor.
 
+### Choose Your Workflow
+
+- Use the visual editor if you want to design a banner, tweak layers, and copy the generated URL.
+- Use the API directly if you already know the parameters you want to send from code, scripts, or templates.
+
 ---
 
-## API Reference
+## Live Demo
 
-### Banner Generation Endpoint
-`GET /api/banner`
+This repo is deployed here, so you can try a working request immediately:
+
+- https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+
+Markdown image example:
+
+![Demo Banner](https://banner-img.vercel.app/api/banner?w=1200&h=240&bg=%230f172a&text=Banner%20Img,600,120,72,%23ffffff,0,middle,Inter,true)
+
+---
+
+## How It Works
+
+1. Set the canvas with `w`, `h`, `bg`, and optional `r`.
+2. Add one or more `text` and `image` parameters.
+3. Request `/api/banner` and receive an `svg` or `png`.
+
+The API renders layers from left to right, so the first layer goes behind the next ones.
+
+### Common Use Cases
+
+- Open Graph and social preview images
+- Project banners with title text and logos
+- Dynamic images generated from app data
+- Reusable templates driven by URL parameters
+
+---
+
+## API
+
+Endpoint: `GET /api/banner`
+
+Use repeated `text` and `image` parameters to build a composition.
+
+When you are using this from GitHub or docs, replace the base URL with your own deployment (or use `http://localhost:3000` for local dev).
+
+Minimal working request:
+
+```http
+https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+```
+
+If you are starting from the editor, build the banner visually first, then reuse the generated query string in your app or links.
 
 ### Query Parameters
 
@@ -56,113 +100,65 @@ Open `http://localhost:3000` to access the visual web editor.
 | `format` | String | `svg` | Output format: `svg` or `png` |
 | `download` | Boolean | `false` | Force file download |
 
-
 ### Text Layer Format
 ```text
 text=content,x,y,size,color,rotation,anchor,font,clip
 ```
-*Example*: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial,true`
+Fields:
+- `content`: text to render
+- `x,y`: text position
+- `size`: font size in pixels
+- `color`: hex color
+- `rotation`: rotation in degrees
+- `anchor`: text anchor such as `start`, `middle`, or `end`
+- `font`: font family name
+- `clip`: `true` or `false`
+
+Example: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial,true`
 
 ### Image Layer Format
 ```text
 image=url,x,y,width,height,rotation,clip
 ```
-*Example*: `image=https://example.com/logo.png,50,50,100,100,0,true`
+Fields:
+- `url`: image URL
+- `x,y`: image position
+- `width,height`: rendered image size
+- `rotation`: rotation in degrees
+- `clip`: `true` or `false`
 
-*Layer Ordering*: Layers are processed from left to right. The first layer parameter is rendered at the bottom, and the last layer parameter is rendered on top.
+Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 
-### Per-Layer Content Clipping
+### Notes
 
-Each text and image layer can be individually clipped to the banner bounds, respecting the border radius. This means:
+- Layers are processed left to right: first is bottom, last is top.
+- `format=svg` is the default; use `format=png` for raster output.
+- `download=true` forces the browser to download the file.
+- Fonts such as `Inter`, `Fira Code`, and `Playfair Display` are supported, with system fallbacks when needed.
+- Requests from obvious bots/CLI tools may be blocked; if you test with curl, use a browser-like User-Agent.
+- Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
 
-- Content positioned outside the banner edges will be hidden when `clip=true`
-- Content respects the rounded corners when `r` (radius) is set
-- Images and text will be cleanly cut at the banner boundaries
-- Each layer can have different clipping settings
+Example curl (set a browser-like User-Agent):
 
-**Clipping Parameter:**
-- `true` (default): Content is clipped to banner bounds with border radius
-- `false`: Content can extend beyond banner edges
-
-**Example with mixed clipping:**
-```http
-/api/banner?w=800&h=200&r=50&text=Clipped Text,400,100,40,%23ffffff,0,middle,Arial,true&image=https://example.com/logo.png,50,50,100,100,0,false
+```bash
+curl -A "Mozilla/5.0" "https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true"
 ```
-
-In this example, the text is clipped to the banner bounds while the image can extend beyond the edges.
-
-**Note**: Disabling clipping for specific layers can be useful for creative effects where you want certain elements to extend beyond the banner boundaries while keeping others neatly contained.
-
-### GitHub Version Badge in Text
-You can include GitHub release versions directly in text layers using the `[gitver/owner/repo]` syntax. The API will automatically fetch and replace the pattern with the latest version tag.
-
-**Example:**
-```
-text=New [gitver/adrianpriza-ai/banner-img] Released,600,315,40,#ffffff,0,middle,Inter
-```
-
-**Visual Editor Preview:**
-- In the web editor, `[gitver/owner/repo]` patterns display as `v1.0.0` for preview purposes
-- The actual version is fetched and displayed when the banner is rendered via the API
-- This allows you to see the layout without making API calls during editing
-
-**Notes:**
-- Uses GitHub's public API (rate limited)
-- If the API fails or repository is not found, the original `[gitver/owner/repo]` pattern will be displayed
-- You can use multiple gitver patterns in a single text layer
-- Works with both SVG and PNG output formats
-- Version results are cached for 5 minutes to avoid excessive API calls
 
 ---
 
 ## Examples
 
 ### Simple Text Banner
+
 ```http
-/api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter,true&bg=%231e3a8a&format=png
 ```
 
-### Multi-Layer Composition
+### Text + Image Layers
+
 ```http
-/api/banner?w=1200&h=630&image=https://picsum.photos/200,100,100,100,0&text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&image=https%3A%2F%2Fpicsum.photos%2F200,80,80,220,220,0,true&text=Top%20Layer,600,200,40,%23ffffff,0,middle,Inter,true&text=Bottom%20Layer,600,420,30,%23cccccc,0,middle,Arial,true&bg=%231e3a8a&format=png
 ```
-
----
-
-## Security & Bot Protection
-
-The API includes built-in protection against abusive bots and automated scraping:
-
-### Rate Limiting
-- **Limit**: 100 requests per minute per IP address
-- **Headers**: Successful requests include `X-RateLimit-Limit` and `X-RateLimit-Remaining` headers
-- **Rate Limit Response**: Returns HTTP 429 with `Retry-After` header when limit is exceeded
-
-### User-Agent Validation
-- Blocks requests with suspicious or empty User-Agents
-- Allows legitimate browsers (Chrome, Firefox, Safari, Edge, etc.)
-- Blocks common bot patterns (curl, wget, python, java, headless browsers, etc.)
-
-### Request Pattern Analysis
-- Detects and blocks suspicious URL patterns (admin paths, config files, etc.)
-- Requires valid HTTP headers for all requests
-- Logs suspicious activity for monitoring
-
-### Configuration
-Bot protection settings can be adjusted in `api/banner.js`:
-- `RATE_LIMIT.requests` - Requests per time window (default: 100)
-- `RATE_LIMIT.window` - Time window in milliseconds (default: 60000ms = 1 minute)
-- `SUSPICIOUS_PATTERNS` - Regex patterns for user agents and URL paths
-
-### Example Rate Limit Response
-```json
-{
-  "error": "Too many requests",
-  "retryAfter": 45
-}
-```
-
-**Note**: In serverless environments, rate limiting uses in-memory storage and resets between function invocations. For production use, consider using a dedicated rate limiting service.
 
 ---
 
@@ -172,17 +168,17 @@ Bot protection settings can be adjusted in `api/banner.js`:
 ```text
 banner-img/
 ├── api/
-│   └── banner.js          # Main API endpoint with caching, rendering logic, and gitver support
+│   └── banner.js
 ├── public/
-│   └── index.html         # Frontend visual web editor
-├── package.json           # Project metadata & dependencies
-├── vercel.json            # Edge routing, custom headers, and function memory config
-└── README.md              # Project documentation
+│   └── index.html
+├── package.json
+├── vercel.json
+└── README.md
 ```
 
 ### Performance & Configuration
-- **Optimization**: Powered by Rust-backed `@resvg/resvg-js` for high-performance PNG encoding.
-- **Serverless**: Configured via `vercel.json` with `1024MB` memory and a `10s` timeout.
+- PNG encoding uses `@resvg/resvg-js`
+- Serverless runtime settings live in `vercel.json`
 
 ---
 
