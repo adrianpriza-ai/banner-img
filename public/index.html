@@ -601,7 +601,10 @@
                         transform = ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"`;
                     }
                     const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
-                    svg += `${tab}<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${layer.anchor}"${transform}>${contentEscaped}</text></g>${nl}`;
+                    let svgAnchor = layer.anchor;
+                    if (svgAnchor === 'start') svgAnchor = 'end';
+                    else if (svgAnchor === 'end') svgAnchor = 'start';
+                    svg += `${tab}<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${svgAnchor}"${transform}>${contentEscaped}</text></g>${nl}`;
                 }
             }
 

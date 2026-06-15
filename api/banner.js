@@ -554,7 +554,10 @@ module.exports = async (req, res) => {
                     }
                     
                     const rotation = parseFloat(parts[5]) || 0;
-                    const anchor = ['start', 'middle', 'end'].includes(parts[6]) ? parts[6] : 'middle';
+                    let anchor = parts[6];
+                    if (anchor === 'start') anchor = 'end';
+                    else if (anchor === 'end') anchor = 'start';
+                    else if (anchor !== 'middle') anchor = 'middle';
                     const fontFamily = (parts[7] || 'Arial').slice(0, 50);
                     const clip = (parts[8] || 'true') === 'true';
                     
