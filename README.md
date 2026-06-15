@@ -4,7 +4,7 @@
 
   # Banner Generator API
 
-  A serverless banner image generator (SVG/PNG) with text/image overlays and a simple web editor.
+  Generate banner images from URL parameters with text layers, image layers, custom fonts, and a built-in editor.
 
 </div>
 
@@ -12,11 +12,11 @@
 
 ## Features
 
-- Dynamic SVG/PNG generation via a single HTTP endpoint
-- Layered rendering for multiple text and image overlays
-- Visual web editor for building banners and previewing parameters
-- Caching and ETag support for faster repeated renders
-- Google Fonts + system font fallbacks
+- Generate SVG or PNG banners from a single HTTP endpoint
+- Stack multiple text and image layers in one banner
+- Use the visual editor to build layouts and preview output
+- Load supported Google Fonts with system font fallbacks
+- Reuse generated output with caching and ETag support
 
 ---
 
@@ -38,9 +38,25 @@ Open `http://localhost:3000` to access the visual web editor.
 
 ---
 
+## How It Works
+
+1. Set the canvas with `w`, `h`, `bg`, and optional `r`.
+2. Add one or more `text` and `image` parameters.
+3. Request `/api/banner` and receive an `svg` or `png`.
+
+The API renders layers from left to right, so the first layer goes behind the next ones.
+
+---
+
 ## API
 
 Endpoint: `GET /api/banner`
+
+Use repeated `text` and `image` parameters to build a composition. A minimal request looks like:
+
+```http
+/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+```
 
 ### Query Parameters
 
@@ -58,25 +74,49 @@ Endpoint: `GET /api/banner`
 ```text
 text=content,x,y,size,color,rotation,anchor,font,clip
 ```
-*Example*: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial,true`
+Fields:
+- `content`: text to render
+- `x,y`: text position
+- `size`: font size in pixels
+- `color`: hex color
+- `rotation`: rotation in degrees
+- `anchor`: text anchor such as `start`, `middle`, or `end`
+- `font`: font family name
+- `clip`: `true` or `false`
+
+Example: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial,true`
 
 ### Image Layer Format
 ```text
 image=url,x,y,width,height,rotation,clip
 ```
-*Example*: `image=https://example.com/logo.png,50,50,100,100,0,true`
+Fields:
+- `url`: image URL
+- `x,y`: image position
+- `width,height`: rendered image size
+- `rotation`: rotation in degrees
+- `clip`: `true` or `false`
 
-Layer ordering: layers are processed left to right (first is bottom, last is top).
+Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 
-Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
+### Notes
+
+- Layers are processed left to right: first is bottom, last is top.
+- `format=svg` is the default; use `format=png` for raster output.
+- `download=true` forces the browser to download the file.
+- Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
 
 ---
 
 ## Examples
 
+### Simple Text Banner
+
 ```http
 /api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter&bg=%231e3a8a&format=png
 ```
+
+### Text + Image Layers
 
 ```http
 /api/banner?w=1200&h=630&image=https://picsum.photos/200,100,100,100,0&text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&bg=%231e3a8a&format=png
