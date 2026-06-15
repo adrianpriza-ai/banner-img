@@ -43,6 +43,18 @@ Open `http://localhost:3000` to access the visual web editor.
 
 ---
 
+## Live Demo
+
+This repo is deployed here, so you can try a working request immediately:
+
+- https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+
+Markdown image example:
+
+![Demo Banner](https://banner-img.vercel.app/api/banner?w=1200&h=240&bg=%230f172a&text=Banner%20Img,600,120,72,%23ffffff,0,middle,Inter,true)
+
+---
+
 ## How It Works
 
 1. Set the canvas with `w`, `h`, `bg`, and optional `r`.
@@ -64,10 +76,14 @@ The API renders layers from left to right, so the first layer goes behind the ne
 
 Endpoint: `GET /api/banner`
 
-Use repeated `text` and `image` parameters to build a composition. A minimal request looks like:
+Use repeated `text` and `image` parameters to build a composition.
+
+When you are using this from GitHub or docs, replace the base URL with your own deployment (or use `http://localhost:3000` for local dev).
+
+Minimal working request:
 
 ```http
-/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
 ```
 
 If you are starting from the editor, build the banner visually first, then reuse the generated query string in your app or links.
@@ -119,7 +135,14 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 - `format=svg` is the default; use `format=png` for raster output.
 - `download=true` forces the browser to download the file.
 - Fonts such as `Inter`, `Fira Code`, and `Playfair Display` are supported, with system fallbacks when needed.
+- Requests from obvious bots/CLI tools may be blocked; if you test with curl, use a browser-like User-Agent.
 - Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
+
+Example curl (set a browser-like User-Agent):
+
+```bash
+curl -A "Mozilla/5.0" "https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true"
+```
 
 ---
 
@@ -128,13 +151,13 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 ### Simple Text Banner
 
 ```http
-/api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter,true&bg=%231e3a8a&format=png
 ```
 
 ### Text + Image Layers
 
 ```http
-/api/banner?w=1200&h=630&image=https://picsum.photos/200,100,100,100,0&text=Top Layer,600,200,40,%23ffffff,0,middle,Inter&text=Bottom Layer,600,400,30,%23cccccc,0,middle,Arial&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&image=https%3A%2F%2Fpicsum.photos%2F200,80,80,220,220,0,true&text=Top%20Layer,600,200,40,%23ffffff,0,middle,Inter,true&text=Bottom%20Layer,600,420,30,%23cccccc,0,middle,Arial,true&bg=%231e3a8a&format=png
 ```
 
 ---
