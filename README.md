@@ -36,6 +36,11 @@ npx vercel dev
 ```
 Open `http://localhost:3000` to access the visual web editor.
 
+### Choose Your Workflow
+
+- Use the visual editor if you want to design a banner, tweak layers, and copy the generated URL.
+- Use the API directly if you already know the parameters you want to send from code, scripts, or templates.
+
 ---
 
 ## How It Works
@@ -45,6 +50,13 @@ Open `http://localhost:3000` to access the visual web editor.
 3. Request `/api/banner` and receive an `svg` or `png`.
 
 The API renders layers from left to right, so the first layer goes behind the next ones.
+
+### Common Use Cases
+
+- Open Graph and social preview images
+- Project banners with title text and logos
+- Dynamic images generated from app data
+- Reusable templates driven by URL parameters
 
 ---
 
@@ -57,6 +69,8 @@ Use repeated `text` and `image` parameters to build a composition. A minimal req
 ```http
 /api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
 ```
+
+If you are starting from the editor, build the banner visually first, then reuse the generated query string in your app or links.
 
 ### Query Parameters
 
@@ -104,6 +118,7 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 - Layers are processed left to right: first is bottom, last is top.
 - `format=svg` is the default; use `format=png` for raster output.
 - `download=true` forces the browser to download the file.
+- Fonts such as `Inter`, `Fira Code`, and `Playfair Display` are supported, with system fallbacks when needed.
 - Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
 
 ---
