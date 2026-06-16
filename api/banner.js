@@ -55,8 +55,7 @@ const SUSPICIOUS_PATTERNS = {
         /chromedriver/i,
         /requests/i,
         /libwww/i,
-        /lwp/i,
-        /wget/i
+        /lwp/i
     ],
     // Suspicious request patterns
     paths: [
@@ -247,7 +246,7 @@ async function replaceGitverPatterns(text) {
     for (const repo of uniqueRepos) {
         const pattern = `[gitver/${repo}]`;
         const version = await getGitHubVersion(repo);
-        result = result.split(pattern).join(version);
+        result = result.replaceAll(pattern, version);
     }
     
     return result;
@@ -532,7 +531,7 @@ module.exports = async (req, res) => {
                 if (!key || !value) continue;
                 
                 const decodedKey = decodeURIComponent(key);
-                const decodedValue = decodeURIComponent(value);
+                const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
                 
                 if (decodedKey === 'text') {
                     const parts = decodedValue.split(',');

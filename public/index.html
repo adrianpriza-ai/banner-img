@@ -58,7 +58,7 @@
             font-size: 24px;
             font-weight: 700;
             margin: 0;
-            color: #ffffff;
+            color: var(--text-primary);
             letter-spacing: -0.02em;
         }
 
@@ -612,8 +612,8 @@
             return svg;
         }
 
-        // Build Server URL
-        function buildServerQueryString() {
+        // Build query parameters (shared helper)
+        function buildQueryParams() {
             const params = new URLSearchParams();
             params.set('w', document.getElementById('w').value);
             params.set('h', document.getElementById('h').value);
@@ -635,32 +635,18 @@
                     params.append('image', parts.join(','));
                 }
             }
+            return params;
+        }
+
+        // Build Server URL
+        function buildServerQueryString() {
+            const params = buildQueryParams();
             return `/api/banner?${params.toString()}`;
         }
 
         // Build Shareable Editor link
         function buildShareableEditorLink() {
-            const params = new URLSearchParams();
-            params.set('w', document.getElementById('w').value);
-            params.set('h', document.getElementById('h').value);
-            params.set('r', document.getElementById('r').value);
-
-            const isTransparent = document.getElementById('bg-type').value === 'transparent';
-            params.set('bg', isTransparent ? 'transparent' : document.getElementById('bg-hex').value);
-
-            // Send layers in reverse order so first param = top layer
-            for (let i = layers.length - 1; i >= 0; i--) {
-                const layer = layers[i];
-                if (layer.type === 'text') {
-                    const encodedContent = encodeURIComponent(layer.content);
-                    const parts = [encodedContent, layer.x, layer.y, layer.fontSize, layer.color, layer.rotation, layer.anchor, layer.fontFamily, layer.clip ? 'true' : 'false'];
-                    params.append('text', parts.join(','));
-                } else if (layer.type === 'image') {
-                    const encodedUrl = encodeURIComponent(layer.url);
-                    const parts = [encodedUrl, layer.x, layer.y, layer.width, layer.height, layer.rotation, layer.clip ? 'true' : 'false'];
-                    params.append('image', parts.join(','));
-                }
-            }
+            const params = buildQueryParams();
             return window.location.origin + window.location.pathname + '?' + params.toString();
         }
 
@@ -716,7 +702,7 @@
                                 <label>Color</label>
                                 <div style="display:flex; gap:2px; align-items:center;">
                                     <input class="txt-color-hex" type="text" value="${layer.color}" style="width:75px;">
-                                    <input class="txt-color" type="color" value="${layer.color.slice(0, 7)}">
+                                    <input class="txt-color" type="color" value="${layer.color.length >= 7 ? layer.color.slice(0, 7) : layer.color}">
                                 </div>
                             </div>
                             <div><label>Rotation</label><input class="txt-rot" type="number" value="${layer.rotation}"></div>
