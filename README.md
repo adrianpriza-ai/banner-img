@@ -1,6 +1,6 @@
 <div align="center">
 
-  ![Banner](http://banner-img.vercel.app/api/banner?w=500&h=100&r=20&bg=%23ffffff&text=Banner%2520Img%2C170%2C50%2C41%2C%23000000%2C0%2Cmiddle%2CTimes+New+Roman%2Ctrue&image=https%253A%252F%252Fimages.jammable.com%252Fvoices%252Fsaiba-momoi-isGxI%252F2ab9d248-9b0f-4891-afd9-16c6b346a2ca.png%2C250%2C-30%2C250%2C250%2C0%2Ctrue&text=Banner%2520Img%2C170%2C50%2C40%2C%23ff83d3%2C0%2Cmiddle%2CTimes+New+Roman%2Ctrue)
+  ![Banner](https://banner-img.vercel.app/api/banner?w=500&h=100&r=20&bg=%23ffffff&text=Banner%2520Img%2C170%2C50%2C41%2C%23000000%2C0%2Cmiddle%2CTimes+New+Roman%2Ctrue&image=https%253A%252F%252Fimages.jammable.com%252Fvoices%252Fsaiba-momoi-isGxI%252F2ab9d248-9b0f-4891-afd9-16c6b346a2ca.png%2C250%2C-30%2C250%2C250%2C0%2Ctrue&text=Banner%2520Img%2C170%2C50%2C40%2C%23ff83d3%2C0%2Cmiddle%2CTimes+New+Roman%2Ctrue)
 
   # Banner Generator API
 
@@ -47,11 +47,11 @@ Open `http://localhost:3000` to access the visual web editor.
 
 This repo is deployed here, so you can try a working request immediately:
 
-- https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+- https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello%2C600%2C315%2C60%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue
 
 Markdown image example:
 
-![Demo Banner](https://banner-img.vercel.app/api/banner?w=1200&h=240&bg=%230f172a&text=Banner%20Img,600,120,72,%23ffffff,0,middle,Inter,true)
+![Demo Banner](https://banner-img.vercel.app/api/banner?w=1200&h=240&bg=%230f172a&text=Banner%20Img%2C600%2C120%2C72%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue)
 
 ---
 
@@ -83,7 +83,7 @@ When you are using this from GitHub or docs, replace the base URL with your own 
 Minimal working request:
 
 ```http
-https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true
+https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello%2C600%2C315%2C60%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue
 ```
 
 If you are starting from the editor, build the banner visually first, then reuse the generated query string in your app or links.
@@ -141,7 +141,7 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 Example curl (set a browser-like User-Agent):
 
 ```bash
-curl -A "Mozilla/5.0" "https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello,600,315,60,%23ffffff,0,middle,Inter,true"
+curl -A "Mozilla/5.0" "https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=%231e3a8a&text=Hello%2C600%2C315%2C60%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue"
 ```
 
 ---
@@ -151,13 +151,13 @@ curl -A "Mozilla/5.0" "https://banner-img.vercel.app/api/banner?w=1200&h=630&bg=
 ### Simple Text Banner
 
 ```http
-https://banner-img.vercel.app/api/banner?w=1200&h=630&text=Welcome,600,315,60,%23ffffff,0,middle,Inter,true&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&text=Welcome%2C600%2C315%2C60%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue&bg=%231e3a8a&format=png
 ```
 
 ### Text + Image Layers
 
 ```http
-https://banner-img.vercel.app/api/banner?w=1200&h=630&image=https%3A%2F%2Fpicsum.photos%2F200,80,80,220,220,0,true&text=Top%20Layer,600,200,40,%23ffffff,0,middle,Inter,true&text=Bottom%20Layer,600,420,30,%23cccccc,0,middle,Arial,true&bg=%231e3a8a&format=png
+https://banner-img.vercel.app/api/banner?w=1200&h=630&image=https%3A%2F%2Fpicsum.photos%2F200%2C80%2C80%2C220%2C220%2C0%2Ctrue&text=Top%20Layer%2C600%2C200%2C40%2C%23ffffff%2C0%2Cmiddle%2CInter%2Ctrue&text=Bottom%20Layer%2C600%2C420%2C30%2C%23cccccc%2C0%2Cmiddle%2CArial%2Ctrue&bg=%231e3a8a&format=png
 ```
 
 ---
