@@ -194,25 +194,6 @@ function generateETag(content) {
     return crypto.createHash('md5').update(content).digest('hex');
 }
 
-function safeDecodeURIComponent(value) {
-    try {
-        return decodeURIComponent(value);
-    } catch {
-        return value;
-    }
-}
-
-function splitQueryPair(pair) {
-    const separatorIndex = pair.indexOf('=');
-    if (separatorIndex === -1) {
-        return [pair, ''];
-    }
-    return [
-        pair.slice(0, separatorIndex),
-        pair.slice(separatorIndex + 1)
-    ];
-}
-
 // Fetch GitHub version for a repository
 async function getGitHubVersion(repo) {
     const now = Date.now();
@@ -273,7 +254,12 @@ async function replaceGitverPatterns(text) {
 
 // Generate cache key from query parameters
 function generateCacheKey(query) {
-    return crypto.createHash('md5').update(query).digest('hex');
+    // Sort and stringify query parameters to create consistent cache keys
+    const sortedParams = Object.keys(query).sort().reduce((acc, key) => {
+        acc[key] = query[key];
+        return acc;
+    }, {});
+    return crypto.createHash('md5').update(JSON.stringify(sortedParams)).digest('hex');
 }
 
 // Compile active fonts: downloads woff2 files, caches them in /tmp, and outputs base64 CSS and local paths
@@ -360,7 +346,6 @@ async function compileFonts(fontFamilies) {
             // 2. Extract only /* latin */ subset blocks to keep payload size lightweight
             let match;
             const blocks = [];
-            LATIN_FONT_BLOCK_REGEX.lastIndex = 0;
             while ((match = LATIN_FONT_BLOCK_REGEX.exec(cssText)) !== null) {
                 blocks.push(match[0]);
             }
@@ -375,7 +360,6 @@ async function compileFonts(fontFamilies) {
             // 3. Extract font URLs from matching blocks
             const urlMatches = [];
             let urlMatch;
-            FONT_URL_REGEX.lastIndex = 0;
             while ((urlMatch = FONT_URL_REGEX.exec(compiledCss)) !== null) {
                 urlMatches.push(urlMatch[1]);
             }
@@ -480,10 +464,9 @@ module.exports = async (req, res) => {
         res.setHeader('X-RateLimit-Remaining', rateLimitResult.remaining);
         
         const q = req.query;
-        const rawQuery = req.url.split('?')[1] || '';
         
         // Check output cache for existing response
-        const cacheKey = generateCacheKey(rawQuery);
+        const cacheKey = generateCacheKey(q);
         if (outputCache[cacheKey]) {
             const cached = outputCache[cacheKey];
             // Check if cache is still valid (less than 1 hour old)
@@ -536,6 +519,7 @@ module.exports = async (req, res) => {
         const imageUrlsToFetch = [];
         
         // Get raw query string to preserve parameter order
+        const rawQuery = req.url.split('?')[1];
         if (rawQuery) {
             const paramPairs = rawQuery.split('&');
             let layerCount = 0;
@@ -543,11 +527,11 @@ module.exports = async (req, res) => {
             for (const pair of paramPairs) {
                 if (layerCount >= 20) break; // Max 20 total layers
                 
-                const [key, value] = splitQueryPair(pair);
+                const [key, value] = pair.split('=');
                 if (!key || !value) continue;
                 
-                const decodedKey = safeDecodeURIComponent(key);
-                const decodedValue = safeDecodeURIComponent(value.replace(/\+/g, ' '));
+                const decodedKey = decodeURIComponent(key);
+                const decodedValue = decodeURIComponent(value.replace(/\+/g, ' '));
                 
                 if (decodedKey === 'text') {
                     const parts = decodedValue.split(',');
