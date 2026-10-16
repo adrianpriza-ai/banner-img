@@ -15,7 +15,7 @@
 - Generate SVG or PNG banners from a single HTTP endpoint
 - Stack multiple text and image layers in one banner
 - Use the visual editor to build layouts and preview output
-- Load supported Google Fonts with system font fallbacks
+- Load font files from any URL (TTF/OTF/WOFF/WOFF2), alongside Google Fonts and system fallbacks
 - Reuse generated output with caching and ETag support
 
 ---
@@ -111,10 +111,16 @@ Fields:
 - `color`: hex color
 - `rotation`: rotation in degrees
 - `anchor`: text anchor such as `start`, `middle`, or `end`
-- `font`: font family name
+- `font`: font family name, a supported Google Font name, or a URL to a font file (`.ttf`, `.otf`, `.woff`, `.woff2`)
 - `clip`: `true` or `false`
 
 Example: `text=Hello World,400,100,40,%23ffffff,0,middle,Arial,true`
+
+Use a remote font by URL-encoding the link as the `font` field:
+
+```http
+text=Hello%2C400%2C100%2C60%2C%23ffffff%2C0%2Cmiddle%2Chttps%3A%2F%2Fexample.com%2FFont.ttf%2Ctrue
+```
 
 ### Image Layer Format
 ```text
@@ -135,6 +141,7 @@ Example: `image=https://example.com/logo.png,50,50,100,100,0,true`
 - `format=svg` is the default; use `format=png` for raster output.
 - `download=true` forces the browser to download the file.
 - Fonts such as `Inter`, `Fira Code`, and `Playfair Display` are supported, with system fallbacks when needed.
+- Any font can be loaded from a URL: pass a `.ttf`, `.otf`, `.woff`, or `.woff2` link as the text layer's `font` field. The file is downloaded, cached, and inlined for both SVG and PNG output.
 - Requests from obvious bots/CLI tools may be blocked; if you test with curl, use a browser-like User-Agent.
 - Advanced behavior (clipping details, gitver expansion, caching, bot protection) lives in [api/banner.js](api/banner.js).
 
