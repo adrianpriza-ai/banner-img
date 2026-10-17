@@ -48,6 +48,22 @@ function previewGitverPatterns(text) {
 	return text.replace(/\[gitver\/[a-zA-Z0-9_.-]+\/[a-zA-Z0-9_.-]+\]/g, 'v1.0.0');
 }
 
+// A text layer's font can be a family name or a URL to a font file (.ttf/.otf/.woff/.woff2)
+function isFontUrl(value) {
+	return /^https?:\/\//i.test(value || '');
+}
+
+// Browsers honor the @font-face we emit in the SVG, so any stable name works.
+// A short deterministic hash keeps different URLs from colliding.
+function svgFontFamilyName(fontFamily) {
+	if (!isFontUrl(fontFamily)) return fontFamily;
+	let hash = 5381;
+	for (let i = 0; i < fontFamily.length; i++) {
+		hash = ((hash * 33) ^ fontFamily.charCodeAt(i)) >>> 0;
+	}
+	return 'font-' + hash.toString(36);
+}
+
 // SVG String Generator
 function buildSvgCode(formatted = false) {
 	const w = parseInt(document.getElementById('w').value) || 800;
@@ -68,6 +84,13 @@ function buildSvgCode(formatted = false) {
 	svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');${nl}`;
 	svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;700&display=swap');${nl}`;
 	svg += `${tab}${tab}${tab}@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;700&display=swap');${nl}`;
+
+	// Declare remote font files (.ttf/.otf/.woff/.woff2) referenced by text layers
+	const urlFonts = [...new Set(layers.filter(l => l.type === 'text' && isFontUrl(l.fontFamily)).map(l => l.fontFamily))];
+	for (const fontUrl of urlFonts) {
+		svg += `${tab}${tab}${tab}@font-face { font-family: '${svgFontFamilyName(fontUrl)}'; src: url('${fontUrl}'); }${nl}`;
+	}
+
 	svg += `${tab}${tab}]]></style>${nl}`;
 	
 	// Add per-layer clip paths for layers that have clipping enabled
@@ -110,7 +133,7 @@ function buildSvgCode(formatted = false) {
 			let svgAnchor = layer.anchor;
 			if (svgAnchor === 'start') svgAnchor = 'end';
 			else if (svgAnchor === 'end') svgAnchor = 'start';
-			svg += `${tab}<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(layer.fontFamily)}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${svgAnchor}"${transform}>${contentEscaped}</text></g>${nl}`;
+			svg += `${tab}<g${clipAttr}><text x="${layer.x}" y="${layer.y}" dy="0.35em" font-family="${escapeXml(svgFontFamilyName(layer.fontFamily))}" font-size="${layer.fontSize}" fill="${layer.color}" text-anchor="${svgAnchor}"${transform}>${contentEscaped}</text></g>${nl}`;
 		}
 	}
 
@@ -220,17 +243,8 @@ function renderLayers() {
 						</select>
 					</div>
 					<div><label>Font</label>
-						<select class="txt-font">
-							<option value="Arial" ${layer.fontFamily === 'Arial' ? 'selected' : ''}>Arial</option>
-							<option value="Courier New" ${layer.fontFamily === 'Courier New' ? 'selected' : ''}>Courier New</option>
-							<option value="Georgia" ${layer.fontFamily === 'Georgia' ? 'selected' : ''}>Georgia</option>
-							<option value="Times New Roman" ${layer.fontFamily === 'Times New Roman' ? 'selected' : ''}>Times New Roman</option>
-							<option value="Verdana" ${layer.fontFamily === 'Verdana' ? 'selected' : ''}>Verdana</option>
-							<option value="Trebuchet MS" ${layer.fontFamily === 'Trebuchet MS' ? 'selected' : ''}>Trebuchet MS</option>
-							<option value="Inter" ${layer.fontFamily === 'Inter' ? 'selected' : ''}>Inter (Google)</option>
-							<option value="Fira Code" ${layer.fontFamily === 'Fira Code' ? 'selected' : ''}>Fira Code (Google)</option>
-							<option value="Playfair Display" ${layer.fontFamily === 'Playfair Display' ? 'selected' : ''}>Playfair Display (Google)</option>
-						</select>
+						<input class="txt-font" list="fontPresets" value="${escapeXml(layer.fontFamily)}" placeholder="Arial or font URL" style="width:160px;">
+						<div class="hint">Family name, Google Font, or .ttf/.otf/.woff/.woff2 URL</div>
 					</div>
 					<div>
 						<label>Clip</label>

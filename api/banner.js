@@ -2,15 +2,19 @@ const { Resvg } = require('@resvg/resvg-js');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const zlib = require('zlib');
 
 const fontCache = {};
 const localFontPaths = {};
+const resolvedFontNames = {};
 const outputCache = {};
 const OUTPUT_CACHE_MAX_SIZE = 50; // Limit in-memory cache size (serverless environment)
 
 // Font usage note: This API runs on Vercel servers and uses fonts available in the server environment.
 // System fonts (Arial, Helvetica, Times New Roman, etc.) should work via loadSystemFonts: true.
-// Google Fonts are downloaded and cached on-demand. If a font isn't available, it will use fallbacks.
+// Google Fonts are downloaded and cached on-demand. Any other font file can be supplied as a URL
+// (the `font` text field accepts a plain family name, a Google Font name, or a .ttf/.otf/.woff/.woff2 URL).
+// If a font isn't available, it will use fallbacks.
 
 // Google Fonts direct download URLs (regular weight)
 const GOOGLE_FONT_FILES = {
@@ -18,6 +22,22 @@ const GOOGLE_FONT_FILES = {
     'Fira Code': 'https://fonts.gstatic.com/s/firacode/v27/uU9NCBsR6Z2vfE9aq3bh3dSD.woff2',
     'Playfair Display': 'https://fonts.gstatic.com/s/playfairdisplay/v37/nuFvD-vYSZtu5_iL6WsKxWjVubXXko0.woff2'
 };
+
+// Supported remote font file types (used for custom URL fonts)
+const FONT_MIME_TYPES = { ttf: 'font/ttf', otf: 'font/otf', woff: 'font/woff', woff2: 'font/woff2' };
+const FONT_CSS_FORMATS = { ttf: 'truetype', otf: 'opentype', woff: 'woff', woff2: 'woff2' };
+const MAX_FONT_BYTES = 10 * 1024 * 1024; // Guard against oversized downloads
+const FONT_FETCH_UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36';
+
+// WOFF2 known tag table (index referenced by the low 6 bits of a table's flags byte)
+const WOFF2_KNOWN_TAGS = [
+    'cmap', 'head', 'hhea', 'hmtx', 'maxp', 'name', 'OS/2', 'post', 'cvt ', 'fpgm', 'glyf', 'loca',
+    'prep', 'CFF ', 'VORG', 'EBDT', 'EBLC', 'gasp', 'hdmx', 'kern', 'LTSH', 'PCLT', 'VDMX', 'vhea',
+    'vmtx', 'BASE', 'GDEF', 'GPOS', 'GSUB', 'EBSC', 'JSTF', 'MATH', 'CBDT', 'CBLC', 'COLR', 'CPAL',
+    'SVG ', 'sbix', 'acnt', 'avar', 'bdat', 'bloc', 'bsln', 'cvar', 'fdsc', 'feat', 'fmtx', 'fvar',
+    'gvar', 'hsty', 'just', 'lcar', 'mort', 'morx', 'opbd', 'prop', 'trak', 'Zapf', 'Silf', 'Glat',
+    'Gloc', 'Feat', 'Sill'
+];
 
 // Pre-compiled regex patterns for better performance
 const HEX_COLOR_REGEX = /^#[0-9a-fA-F]{3}(?:[0-9a-fA-F]{3}){0,2}$/;
@@ -262,10 +282,181 @@ function generateCacheKey(query) {
     return crypto.createHash('md5').update(JSON.stringify(sortedParams)).digest('hex');
 }
 
+// ---------------------------------------------------------------- Custom font URLs
+// A text layer's `font` field may be a remote font file URL. Resvg (used for PNG output)
+// registers fonts by the family name stored inside the file, so we must read that name
+// from the binary and reference it in the SVG. The parser below supports TTF, OTF, WOFF and WOFF2.
+
+function isFontUrl(value) {
+    return typeof value === 'string' && /^https?:\/\//i.test(value);
+}
+
+function getFontExtension(url) {
+    const clean = url.split('?')[0].split('#')[0].toLowerCase();
+    const match = clean.match(/\.(ttf|otf|woff2|woff)$/);
+    return match ? match[1] : 'ttf';
+}
+
+function deriveFontFamilyName(url) {
+    try {
+        const file = decodeURIComponent(url.split('?')[0].split('#')[0].split('/').pop() || '');
+        const name = file.replace(/\.[a-z0-9]+$/i, '').replace(/[^a-zA-Z0-9 _-]/g, ' ').trim();
+        return name || 'custom-font';
+    } catch (e) {
+        return 'custom-font';
+    }
+}
+
+// Read the family name from an sfnt `name` table (platform 3 = Windows/UTF-16BE preferred)
+function decodeNameRecords(buf, tableOffset) {
+    if (tableOffset + 6 > buf.length) return null;
+    const count = buf.readUInt16BE(tableOffset + 2);
+    const stringOffset = buf.readUInt16BE(tableOffset + 4);
+    const records = [];
+    for (let i = 0; i < count; i++) {
+        const r = tableOffset + 6 + i * 12;
+        if (r + 12 > buf.length) break;
+        records.push({
+            platformID: buf.readUInt16BE(r),
+            nameID: buf.readUInt16BE(r + 6),
+            length: buf.readUInt16BE(r + 8),
+            offset: buf.readUInt16BE(r + 10)
+        });
+    }
+    const read = (predicate, nameID) => {
+        for (const rec of records) {
+            if (rec.nameID !== nameID || !predicate(rec)) continue;
+            const start = tableOffset + stringOffset + rec.offset;
+            const end = start + rec.length;
+            if (start < 0 || end > buf.length) continue;
+            const slice = buf.subarray(start, end);
+            if (rec.platformID === 3 || rec.platformID === 0) {
+                let value = '';
+                for (let j = 0; j + 1 < slice.length; j += 2) value += String.fromCharCode(slice.readUInt16BE(j));
+                return value;
+            }
+            return slice.toString('latin1');
+        }
+        return null;
+    };
+    const isWindows = (r) => r.platformID === 3;
+    return (
+        read(isWindows, 16) || read(isWindows, 1) ||
+        read((r) => r.platformID === 1, 1) ||
+        read((r) => r.platformID === 0, 16) || read((r) => r.platformID === 0, 1)
+    );
+}
+
+function extractWoff1Family(buf) {
+    const numTables = buf.readUInt16BE(12);
+    for (let i = 0; i < numTables; i++) {
+        const entry = 44 + i * 20;
+        if (entry + 20 > buf.length) break;
+        if (buf.toString('latin1', entry, entry + 4) !== 'name') continue;
+        const offset = buf.readUInt32BE(entry + 4);
+        const compLength = buf.readUInt32BE(entry + 8);
+        const origLength = buf.readUInt32BE(entry + 12);
+        let data = buf.subarray(offset, offset + compLength);
+        if (compLength < origLength) data = zlib.inflateSync(data);
+        return decodeNameRecords(data, 0);
+    }
+    return null;
+}
+
+function extractWoff2Family(buf) {
+    const numTables = buf.readUInt16BE(12);
+    const totalCompressedSize = buf.readUInt32BE(20);
+    let p = 48;
+    const tables = [];
+    const readBase128 = () => {
+        let value = 0;
+        for (let i = 0; i < 5; i++) {
+            const byte = buf[p++];
+            value = (value << 7) | (byte & 0x7f);
+            if ((byte & 0x80) === 0) return value;
+        }
+        throw new Error('Invalid WOFF2 table entry');
+    };
+    for (let i = 0; i < numTables; i++) {
+        const flags = buf[p++];
+        let tag;
+        if ((flags & 0x3f) === 0x3f) {
+            tag = buf.toString('latin1', p, p + 4);
+            p += 4;
+        } else {
+            tag = WOFF2_KNOWN_TAGS[flags & 0x3f];
+        }
+        const origLength = readBase128();
+        const transformVersion = (flags >> 6) & 0x3;
+        const isGlyfOrLoca = tag === 'glyf' || tag === 'loca';
+        let storedLength = origLength;
+        if ((isGlyfOrLoca && transformVersion !== 3) || (!isGlyfOrLoca && transformVersion !== 0)) {
+            storedLength = readBase128(); // transformLength (0 means the table is reconstructed, e.g. loca)
+        }
+        tables.push({ tag, storedLength });
+    }
+    const stream = zlib.brotliDecompressSync(buf.subarray(p, p + totalCompressedSize));
+    let offset = 0;
+    for (const table of tables) {
+        if (table.tag === 'name') return decodeNameRecords(stream, offset);
+        offset += table.storedLength;
+    }
+    return null;
+}
+
+function extractFontFamily(buffer) {
+    try {
+        const buf = Buffer.from(buffer);
+        if (buf.length < 12) return null;
+        const signature = buf.toString('latin1', 0, 4);
+        if (signature === 'wOF2') return extractWoff2Family(buf);
+        if (signature === 'wOFF') return extractWoff1Family(buf);
+        // TTF / OTF (sfnt) — locate the name table in the table directory
+        const numTables = buf.readUInt16BE(4);
+        for (let i = 0; i < numTables; i++) {
+            const entry = 12 + i * 16;
+            if (entry + 16 > buf.length) break;
+            if (buf.toString('latin1', entry, entry + 4) !== 'name') continue;
+            const offset = buf.readUInt32BE(entry + 8);
+            if (offset + 6 <= buf.length) return decodeNameRecords(buf, offset);
+        }
+        return null;
+    } catch (e) {
+        console.error('Failed to parse font family name:', e);
+        return null;
+    }
+}
+
+// Download a remote font file, cache it on disk and return its @font-face CSS + local path
+async function fetchUrlFont(url) {
+    const res = await fetch(url, { headers: { 'User-Agent': FONT_FETCH_UA } });
+    if (!res.ok) throw new Error(`HTTP status ${res.status}`);
+    const buffer = Buffer.from(await res.arrayBuffer());
+    if (buffer.length === 0) throw new Error('Empty font file');
+    if (buffer.length > MAX_FONT_BYTES) throw new Error(`Font file too large (${buffer.length} bytes)`);
+
+    const ext = getFontExtension(url);
+    const family = extractFontFamily(buffer) || deriveFontFamilyName(url);
+
+    const cachePath = path.join('/tmp', `urlfont_${crypto.createHash('md5').update(url).digest('hex')}.${ext}`);
+    let localPath = cachePath;
+    try {
+        if (!fs.existsSync(cachePath)) fs.writeFileSync(cachePath, buffer);
+    } catch (e) {
+        console.error(`Failed to write font file to ${cachePath}:`, e);
+        localPath = null; // SVG output still works, PNG falls back to system fonts
+    }
+
+    const base64 = buffer.toString('base64');
+    const css = `@font-face{font-family:'${family.replace(/'/g, "\\'")}';src:url("data:${FONT_MIME_TYPES[ext]};base64,${base64}") format("${FONT_CSS_FORMATS[ext]}");font-weight:normal;font-style:normal;font-display:swap;}`;
+    return { css, path: localPath, family };
+}
+
 // Compile active fonts: downloads woff2 files, caches them in /tmp, and outputs base64 CSS and local paths
 async function compileFonts(fontFamilies) {
     let cssContent = '';
     const paths = [];
+    const resolvedFamilies = {};
     const uniqueFonts = [...new Set(fontFamilies)];
     const tempDir = '/tmp';
     const cacheFile = path.join(tempDir, 'font_cache.json');
@@ -292,52 +483,91 @@ async function compileFonts(fontFamilies) {
         console.error('Failed to load font cache from disk:', e);
         persistentCache = {};
     }
-    
-    for (const font of uniqueFonts) {
-        // Only process Google Fonts that are in our predefined list
-        // Other fonts (Arial, Courier New, etc.) will use system fonts
-        if (!GOOGLE_FONT_FILES[font]) {
-            continue; // Skip Google Fonts compilation for system fonts
+
+    // Save persistent cache to disk
+    const savePersistentCache = () => {
+        try {
+            persistentCache.timestamp = Date.now();
+            fs.writeFileSync(cacheFile, JSON.stringify(persistentCache));
+        } catch (e) {
+            console.error('Failed to save font cache to disk:', e);
         }
-        
+    };
+
+    for (const font of uniqueFonts) {
+        // Google Fonts are resolved by name; any other http(s) value is treated as a font file URL.
+        // Everything else (Arial, Courier New, ...) is left to the system fonts available on the server.
+        const isGoogleFont = !!GOOGLE_FONT_FILES[font];
+        const isRemoteFont = !isGoogleFont && isFontUrl(font);
+
+        if (!isGoogleFont && !isRemoteFont) {
+            resolvedFamilies[font] = font;
+            continue;
+        }
+
         // Check in-memory cache first
         if (fontCache[font]) {
             cssContent += fontCache[font];
             if (localFontPaths[font]) {
                 paths.push(...localFontPaths[font]);
             }
+            resolvedFamilies[font] = resolvedFontNames[font] || font;
             continue;
         }
-        
+
         // Check persistent cache
         if (persistentCache[font] && persistentCache[font].css) {
-            fontCache[font] = persistentCache[font].css;
-            localFontPaths[font] = persistentCache[font].paths || [];
-            cssContent += fontCache[font];
-            paths.push(...localFontPaths[font]);
-            
-            // Verify files still exist on disk
+            const cachedPaths = persistentCache[font].paths || [];
             let cacheValid = true;
-            for (const fontPath of localFontPaths[font]) {
-                if (!fs.existsSync(fontPath)) {
-                    // Cache invalidation - file missing
-                    delete fontCache[font];
-                    delete localFontPaths[font];
-                    delete persistentCache[font];
-                    cacheValid = false;
+            for (const fontPath of cachedPaths) {
+                if (fontPath && !fs.existsSync(fontPath)) {
+                    cacheValid = false; // Cache invalidation - file missing
                     break;
                 }
             }
-            
-            if (cacheValid && fontCache[font]) continue; // Cache is valid
+
+            if (cacheValid) {
+                fontCache[font] = persistentCache[font].css;
+                localFontPaths[font] = cachedPaths;
+                resolvedFontNames[font] = persistentCache[font].family || font;
+                cssContent += fontCache[font];
+                paths.push(...cachedPaths);
+                resolvedFamilies[font] = resolvedFontNames[font];
+                continue;
+            }
+            delete persistentCache[font];
         }
-        
+
+        if (isRemoteFont) {
+            // 1. Download the font file, extract its real family name and inline it as base64
+            try {
+                const compiled = await fetchUrlFont(font);
+                fontCache[font] = compiled.css;
+                localFontPaths[font] = compiled.path ? [compiled.path] : [];
+                resolvedFontNames[font] = compiled.family;
+                cssContent += compiled.css;
+                if (compiled.path) paths.push(compiled.path);
+                resolvedFamilies[font] = compiled.family;
+
+                persistentCache[font] = {
+                    css: compiled.css,
+                    paths: localFontPaths[font],
+                    family: compiled.family,
+                    timestamp: Date.now()
+                };
+            } catch (e) {
+                console.error(`Failed to load font from URL ${font}:`, e);
+                resolvedFamilies[font] = font; // Fall back to system fonts
+            }
+            continue;
+        }
+
         try {
             // 1. Fetch Google Fonts CSS using Chrome User-Agent to extract WOFF2 files
             const cssUrl = `https://fonts.googleapis.com/css2?family=${font.replace(/ /g, '+')}:wght@400;700&display=swap`;
             const cssRes = await fetch(cssUrl, {
                 headers: {
-                    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+                    'User-Agent': FONT_FETCH_UA
                 }
             });
             if (!cssRes.ok) throw new Error(`HTTP status ${cssRes.status}`);
@@ -401,28 +631,26 @@ async function compileFonts(fontFamilies) {
             
             fontCache[font] = compiledCss;
             localFontPaths[font] = fontPaths;
+            resolvedFontNames[font] = font;
             cssContent += compiledCss;
+            resolvedFamilies[font] = font;
             
             // Update persistent cache
             persistentCache[font] = {
                 css: compiledCss,
                 paths: fontPaths,
+                family: font,
                 timestamp: Date.now()
             };
         } catch (e) {
             console.error(`Failed to compile font ${font}:`, e);
+            resolvedFamilies[font] = font;
         }
     }
     
-    // Save persistent cache to disk
-    try {
-        persistentCache.timestamp = Date.now();
-        fs.writeFileSync(cacheFile, JSON.stringify(persistentCache));
-    } catch (e) {
-        console.error('Failed to save font cache to disk:', e);
-    }
+    savePersistentCache();
     
-    return { css: cssContent, paths };
+    return { css: cssContent, paths, families: resolvedFamilies };
 }
 
 module.exports = async (req, res) => {
@@ -557,7 +785,7 @@ module.exports = async (req, res) => {
                     if (anchor === 'start') anchor = 'end';
                     else if (anchor === 'end') anchor = 'start';
                     else if (anchor !== 'middle') anchor = 'middle';
-                    const fontFamily = (parts[7] || 'Arial').slice(0, 50);
+                    const fontFamily = (parts[7] || 'Arial').slice(0, 500); // allows family names and font file URLs
                     const clip = (parts[8] || 'true') === 'true';
                     
                     if (!isNaN(fontSize) && !isNaN(rotation)) {
@@ -612,7 +840,7 @@ module.exports = async (req, res) => {
 
         // Fetch and inline all active fonts (for SVG output and Resvg backend paths)
         const fontFamilies = allLayers.filter(l => l.type === 'text').map(t => t.fontFamily);
-        const { css: inlineFontsCss, paths: fontPaths } = await compileFonts(fontFamilies);
+        const { css: inlineFontsCss, paths: fontPaths, families: resolvedFamilies } = await compileFonts(fontFamilies);
         
         // Check if any Google Fonts are actually being used
         const usesGoogleFonts = fontFamilies.some(font => GOOGLE_FONT_FILES[font]);
@@ -620,9 +848,9 @@ module.exports = async (req, res) => {
         // Build SVG
         let svg = `<svg width="${w}" height="${h}" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">`;
         
-        // Embed Google Fonts inside CDATA block (only if Google Fonts are actually used)
+        // Embed compiled @font-face rules (Google Fonts and custom URL fonts) inside CDATA block
         svg += `<defs><style><![CDATA[`;
-        if (usesGoogleFonts && inlineFontsCss) {
+        if (inlineFontsCss) {
             svg += inlineFontsCss;
         } else if (usesGoogleFonts) {
             // Fallback imports if server fetch is temporarily unavailable
@@ -664,9 +892,10 @@ module.exports = async (req, res) => {
                 let transform = '';
                 if (layer.rotation !== 0) transform = ` transform="rotate(${layer.rotation} ${layer.x} ${layer.y})"`;
                 
-                // Build font-family stack with fallbacks for better compatibility
-                const fontFamily = escapeXml(layer.fontFamily);
-                let fontFamilyStack = fontFamily;
+                // Build font-family stack with fallbacks for better compatibility.
+                // Remote fonts resolve to the family name stored inside the file so Resvg can match it.
+                const resolvedFamily = resolvedFamilies[layer.fontFamily] || layer.fontFamily;
+                const usesCustomUrlFont = !GOOGLE_FONT_FILES[layer.fontFamily] && isFontUrl(layer.fontFamily);
                 
                 // Add common fallbacks for better system font support
                 const fallbackMap = {
@@ -678,8 +907,16 @@ module.exports = async (req, res) => {
                     'Verdana': 'Verdana, Arial, sans-serif'
                 };
                 
-                if (fallbackMap[fontFamily]) {
-                    fontFamilyStack = fallbackMap[fontFamily];
+                let fontFamilyStack;
+                if (fallbackMap[resolvedFamily]) {
+                    fontFamilyStack = fallbackMap[resolvedFamily];
+                } else if (usesCustomUrlFont) {
+                    // Only append a generic fallback while the remote font resolved successfully
+                    fontFamilyStack = resolvedFamily === layer.fontFamily
+                        ? 'sans-serif'
+                        : `${escapeXml(resolvedFamily)}, sans-serif`;
+                } else {
+                    fontFamilyStack = escapeXml(resolvedFamily);
                 }
                 
                 const clipAttr = layer.clip ? ` clip-path="url(#${layer.clipId})"` : '';
