@@ -12,7 +12,7 @@
 }
 
 body { 
-	font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif; 
+	font-family: 'Inter', system-ui, -apple-system, sans-serif;
 	padding: 15px; 
 	background: var(--bg-base); 
 	color: var(--text-primary); 
@@ -45,7 +45,7 @@ body {
 }
 
 h1 {
-	font-family: 'Outfit', sans-serif;
+	font-family: 'Inter', system-ui, -apple-system, sans-serif;
 	font-size: 24px;
 	font-weight: 700;
 	margin: 0;

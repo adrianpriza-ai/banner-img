@@ -183,7 +183,10 @@ function buildShareableEditorLink() {
 function updatePreview() {
 	const svgCode = buildSvgCode(false);
 	const formattedSvgCode = buildSvgCode(true);
-	document.getElementById('preview-viewport').innerHTML = svgCode;
+	const previewViewport = document.getElementById('preview-viewport');
+	const svgDocument = new DOMParser().parseFromString(svgCode, 'image/svg+xml');
+	const svgElement = svgDocument.documentElement;
+	previewViewport.replaceChildren(svgElement);
 	// Update raw source box
 	document.getElementById('rawSvgSource').value = formattedSvgCode;
 
@@ -197,155 +200,90 @@ function debouncedUpdate() {
 	debounceTimer = setTimeout(updatePreview, 100);
 }
 
-// Render unified layers list
+// Render unified layers list without parsing user-controlled HTML.
 function renderLayers() {
 	const container = document.getElementById('layersContainer');
-	container.innerHTML = '';
+	container.replaceChildren();
+
+	const createField = (tag, className, type, value, labelText) => {
+		const wrapper = document.createElement('div');
+		const label = document.createElement('label');
+		label.textContent = labelText;
+		const input = document.createElement(tag);
+		input.className = className;
+		if (type) input.type = type;
+		if (tag === 'input' && type === 'checkbox') input.checked = Boolean(value);
+		else input.value = value ?? '';
+		wrapper.append(label, input);
+		return { wrapper, input };
+	};
+
 	layers.forEach((layer, idx) => {
-		const div = document.createElement('div');
-		div.className = 'layer-card';
-		
+		const card = document.createElement('div');
+		card.className = 'layer-card';
+		const header = document.createElement('div');
+		header.className = 'layer-header';
+		const title = document.createElement('span');
+		title.textContent = `${layer.type === 'text' ? 'Text' : 'Image'} Layer #${idx + 1}`;
+		const actions = document.createElement('div');
+		const action = (text, className, handler, disabled = false) => {
+			const button = document.createElement('button');
+			button.className = `small${className ? ` ${className}` : ''}`;
+			button.type = 'button';
+			button.textContent = text;
+			button.disabled = disabled;
+			button.addEventListener('click', handler);
+			actions.appendChild(button);
+		};
+		action('↑', '', () => moveLayer(idx, -1), idx === 0);
+		action('↓', '', () => moveLayer(idx, 1), idx === layers.length - 1);
+		action('Duplicate', 'success', () => duplicateLayer(idx));
+		action('Remove', 'danger', () => removeLayer(idx));
+		header.append(title, actions);
+		card.appendChild(header);
+
 		if (layer.type === 'text') {
-			div.innerHTML = `
-				<div class="layer-header">
-					<span>Text Layer #${idx+1}</span>
-					<div>
-						<button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
-						<button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
-						<button class="small success" onclick="duplicateLayer(${idx})">Duplicate</button>
-						<button class="small danger" onclick="removeLayer(${idx})">Remove</button>
-					</div>
-				</div>
-				<div class="row">
-					<div class="full-width" style="flex:2;">
-						<label>Content</label>
-						<input class="txt-content" value="${escapeXml(layer.content)}" style="width:100%">
-						<div class="hint">Use [gitver/owner/repo] for auto version fetching (preview shows v1.0.0)</div>
-					</div>
-					<div><label>X</label><input class="txt-x" type="number" value="${layer.x}"></div>
-					<div><label>Y</label><input class="txt-y" type="number" value="${layer.y}"></div>
-					<div><label>Size</label><input class="txt-size" type="number" value="${layer.fontSize}"></div>
-				</div>
-				<div class="row">
-					<div>
-						<label>Color</label>
-						<div style="display:flex; gap:2px; align-items:center;">
-							<input class="txt-color-hex" type="text" value="${layer.color}" style="width:75px;">
-							<input class="txt-color" type="color" value="${layer.color.length >= 7 ? layer.color.slice(0, 7) : layer.color}">
-						</div>
-					</div>
-					<div><label>Rotation</label><input class="txt-rot" type="number" value="${layer.rotation}"></div>
-					<div><label>Anchor</label>
-						<select class="txt-anchor">
-							<option value="start" ${layer.anchor === 'start' ? 'selected' : ''}>start</option>
-							<option value="middle" ${layer.anchor === 'middle' ? 'selected' : ''}>middle</option>
-							<option value="end" ${layer.anchor === 'end' ? 'selected' : ''}>end</option>
-						</select>
-					</div>
-					<div><label>Font</label>
-						<input class="txt-font" list="fontPresets" value="${escapeXml(layer.fontFamily)}" placeholder="Arial or font URL" style="width:160px;">
-						<div class="hint">Family name, Google Font, or .ttf/.otf/.woff/.woff2 URL</div>
-					</div>
-					<div>
-						<label>Clip</label>
-						<input class="txt-clip" type="checkbox" ${layer.clip ? 'checked' : ''} style="width:auto;">
-					</div>
-				</div>
-			`;
+			const rowOne = document.createElement('div');
+			rowOne.className = 'row';
+			const content = createField('input', 'txt-content', 'text', layer.content, 'Content');
+			content.wrapper.className = 'full-width';
+			content.wrapper.style.flex = '2';
+			content.input.style.width = '100%';
+			const hint = document.createElement('div');
+			hint.className = 'hint';
+			hint.textContent = 'Use [gitver/owner/repo] for auto version fetching (preview shows v1.0.0)';
+			content.wrapper.appendChild(hint);
+			rowOne.append(content.wrapper, createField('input', 'txt-x', 'number', layer.x, 'X').wrapper, createField('input', 'txt-y', 'number', layer.y, 'Y').wrapper, createField('input', 'txt-size', 'number', layer.fontSize, 'Size').wrapper);
+			const rowTwo = document.createElement('div');
+			rowTwo.className = 'row';
+			const color = createField('input', 'txt-color-hex', 'text', layer.color, 'Color');
+			const picker = document.createElement('input');
+			picker.className = 'txt-color'; picker.type = 'color'; picker.value = layer.color.slice(0, 7);
+			color.wrapper.appendChild(picker);
+			const rotation = createField('input', 'txt-rot', 'number', layer.rotation, 'Rotation');
+			const anchor = createField('select', 'txt-anchor', '', '', 'Anchor');
+			['start', 'middle', 'end'].forEach(value => { const option = document.createElement('option'); option.value = value; option.textContent = value; option.selected = layer.anchor === value; anchor.input.appendChild(option); });
+			const font = createField('input', 'txt-font', 'text', layer.fontFamily, 'Font');
+			font.input.setAttribute('list', 'fontPresets'); font.input.placeholder = 'Arial or font URL'; font.input.style.width = '160px';
+			const fontHint = document.createElement('div'); fontHint.className = 'hint'; fontHint.textContent = 'Family name, Google Font, or .ttf/.otf/.woff/.woff2 URL'; font.wrapper.appendChild(fontHint);
+			const clip = createField('input', 'txt-clip', 'checkbox', layer.clip, 'Clip'); clip.input.style.width = 'auto';
+			rowTwo.append(color.wrapper, rotation.wrapper, anchor.wrapper, font.wrapper, clip.wrapper);
+			card.append(rowOne, rowTwo);
 
-			// Update data logic
-			const syncData = () => {
-				layers[idx].content = div.querySelector('.txt-content').value;
-				let x = parseFloat(div.querySelector('.txt-x').value);
-				let y = parseFloat(div.querySelector('.txt-y').value);
-				layers[idx].x = isNaN(x) ? 0 : x;
-				layers[idx].y = isNaN(y) ? 0 : y;
-				layers[idx].fontSize = parseFloat(div.querySelector('.txt-size').value) || 10;
-				layers[idx].color = div.querySelector('.txt-color-hex').value;
-				layers[idx].rotation = parseFloat(div.querySelector('.txt-rot').value) || 0;
-				layers[idx].anchor = div.querySelector('.txt-anchor').value;
-				layers[idx].fontFamily = div.querySelector('.txt-font').value;
-				layers[idx].clip = div.querySelector('.txt-clip').checked;
-				debouncedUpdate();
-			};
-
-			const colorHex = div.querySelector('.txt-color-hex');
-			const colorPicker = div.querySelector('.txt-color');
-			colorPicker.addEventListener('input', (e) => {
-				colorHex.value = e.target.value;
-				layers[idx].color = e.target.value;
-				debouncedUpdate();
-			});
-			colorHex.addEventListener('input', (e) => {
-				const val = e.target.value.trim();
-				if (val.match(/^#[0-9a-fA-F]{6}$/)) {
-					colorPicker.value = val;
-					layers[idx].color = val;
-					debouncedUpdate();
-				}
-			});
-
-			const inputs = div.querySelectorAll('input, select');
-			inputs.forEach(inp => {
-				inp.addEventListener('input', syncData);
-				inp.addEventListener('change', syncData);
-			});
-
-		} else if (layer.type === 'image') {
-			div.innerHTML = `
-				<div class="layer-header">
-					<span>Image Layer #${idx+1}</span>
-					<div>
-						<button class="small" onclick="moveLayer(${idx}, -1)" ${idx === 0 ? 'disabled' : ''}>↑</button>
-						<button class="small" onclick="moveLayer(${idx}, 1)" ${idx === layers.length - 1 ? 'disabled' : ''}>↓</button>
-						<button class="small success" onclick="duplicateLayer(${idx})">Duplicate</button>
-						<button class="small danger" onclick="removeLayer(${idx})">Remove</button>
-					</div>
-				</div>
-				<div class="row">
-					<div class="full-width" style="flex:3;">
-						<label>Image Source URL</label>
-						<input class="img-url" value="${escapeXml(layer.url.startsWith('data:') ? '[Base64 Image]' : layer.url)}" style="width:100%" placeholder="https://example.com/logo.png">
-						<div class="hint">Supports PNG, JPG, GIF, SVG, WebP, and base64 data URLs</div>
-					</div>
-				</div>
-				<div class="row">
-					<div><label>X</label><input class="img-x" type="number" value="${layer.x}"></div>
-					<div><label>Y</label><input class="img-y" type="number" value="${layer.y}"></div>
-					<div><label>Width</label><input class="img-w" type="number" value="${layer.width}"></div>
-					<div><label>Height</label><input class="img-h" type="number" value="${layer.height}"></div>
-					<div><label>Rotation</label><input class="img-rot" type="number" value="${layer.rotation}"></div>
-					<div>
-						<label>Clip</label>
-						<input class="img-clip" type="checkbox" ${layer.clip ? 'checked' : ''} style="width:auto;">
-					</div>
-				</div>
-			`;
-
-			const syncImageData = () => {
-				const rawUrl = div.querySelector('.img-url').value;
-				if (rawUrl !== '[Base64 Image]') {
-					layers[idx].url = rawUrl;
-				}
-				let x = parseFloat(div.querySelector('.img-x').value);
-				let y = parseFloat(div.querySelector('.img-y').value);
-				layers[idx].x = isNaN(x) ? 0 : x;
-				layers[idx].y = isNaN(y) ? 0 : y;
-				layers[idx].width = parseFloat(div.querySelector('.img-w').value) || 0;
-				layers[idx].height = parseFloat(div.querySelector('.img-h').value) || 0;
-				layers[idx].rotation = parseFloat(div.querySelector('.img-rot').value) || 0;
-				layers[idx].clip = div.querySelector('.img-clip').checked;
-				debouncedUpdate();
-			};
-
-			const inputs = div.querySelectorAll('input');
-			inputs.forEach(inp => {
-				inp.addEventListener('input', syncImageData);
-				inp.addEventListener('change', syncImageData);
-			});
+			const syncData = () => { layers[idx].content = content.input.value; layers[idx].x = parseFloat(rowOne.querySelector('.txt-x').value) || 0; layers[idx].y = parseFloat(rowOne.querySelector('.txt-y').value) || 0; layers[idx].fontSize = parseFloat(rowOne.querySelector('.txt-size').value) || 10; layers[idx].color = color.input.value; layers[idx].rotation = parseFloat(rotation.input.value) || 0; layers[idx].anchor = anchor.input.value; layers[idx].fontFamily = font.input.value; layers[idx].clip = clip.input.checked; debouncedUpdate(); };
+			picker.addEventListener('input', () => { color.input.value = picker.value; layers[idx].color = picker.value; debouncedUpdate(); });
+			[color.input, picker, content.input, rotation.input, anchor.input, font.input, clip.input, ...rowOne.querySelectorAll('input')].forEach(input => { input.addEventListener('input', syncData); input.addEventListener('change', syncData); });
+		} else {
+			const sourceRow = document.createElement('div'); sourceRow.className = 'row';
+			const source = createField('input', 'img-url', 'text', layer.url.startsWith('data:') ? '[Base64 Image]' : layer.url, 'Image Source URL'); source.wrapper.className = 'full-width'; source.wrapper.style.flex = '3'; source.input.style.width = '100%'; source.input.placeholder = 'https://example.com/logo.png';
+			const hint = document.createElement('div'); hint.className = 'hint'; hint.textContent = 'Supports PNG, JPG, GIF, SVG, WebP, and base64 data URLs'; source.wrapper.appendChild(hint); sourceRow.appendChild(source.wrapper); card.appendChild(sourceRow);
+			const row = document.createElement('div'); row.className = 'row';
+			['x', 'y', 'w', 'h', 'rot'].forEach(key => row.appendChild(createField('input', `img-${key}`, 'number', layer[key === 'w' ? 'width' : key === 'h' ? 'height' : key === 'rot' ? 'rotation' : key], key === 'w' ? 'Width' : key === 'h' ? 'Height' : key === 'rot' ? 'Rotation' : key.toUpperCase()).wrapper));
+			const clip = createField('input', 'img-clip', 'checkbox', layer.clip, 'Clip'); clip.input.style.width = 'auto'; row.appendChild(clip.wrapper); card.appendChild(row);
+			const syncImageData = () => { if (source.input.value !== '[Base64 Image]') layers[idx].url = source.input.value; layers[idx].x = parseFloat(row.querySelector('.img-x').value) || 0; layers[idx].y = parseFloat(row.querySelector('.img-y').value) || 0; layers[idx].width = parseFloat(row.querySelector('.img-w').value) || 0; layers[idx].height = parseFloat(row.querySelector('.img-h').value) || 0; layers[idx].rotation = parseFloat(row.querySelector('.img-rot').value) || 0; layers[idx].clip = clip.input.checked; debouncedUpdate(); };
+			row.querySelectorAll('input').forEach(input => { input.addEventListener('input', syncImageData); input.addEventListener('change', syncImageData); }); source.input.addEventListener('input', syncImageData); source.input.addEventListener('change', syncImageData);
 		}
-
-		container.appendChild(div);
+		container.appendChild(card);
 	});
 }
 
