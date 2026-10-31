@@ -119,6 +119,7 @@ h3 {
 	grid-template-columns: minmax(0, 1fr) 30px;
 	grid-template-rows: auto 30px;
 	column-gap: 6px;
+	row-gap: 3px;
 }
 .control-with-picker label,
 .control-with-picker .hint {
