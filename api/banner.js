@@ -2,6 +2,8 @@ const { Resvg } = require('@resvg/resvg-js');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
+const dns = require('dns').promises;
+const net = require('net');
 const zlib = require('zlib');
 
 const fontCache = {};
@@ -192,12 +194,56 @@ function escapeXml(unsafe) {
     });
 }
 
+function isPrivateIp(address) {
+    if (net.isIPv4(address)) {
+        const octets = address.split('.').map(Number);
+        return octets[0] === 10 ||
+            octets[0] === 127 ||
+            (octets[0] === 169 && octets[1] === 254) ||
+            (octets[0] === 172 && octets[1] >= 16 && octets[1] <= 31) ||
+            (octets[0] === 192 && octets[1] === 168) ||
+            octets[0] === 0;
+    }
+
+    if (net.isIPv6(address)) {
+        const normalized = address.toLowerCase();
+        return normalized === '::1' ||
+            normalized.startsWith('fc') ||
+            normalized.startsWith('fd') ||
+            normalized.startsWith('fe80:') ||
+            normalized === '::';
+    }
+
+    return true;
+}
+
+async function assertSafeRemoteUrl(value) {
+    let parsed;
+    try {
+        parsed = new URL(value);
+    } catch {
+        throw new Error('Invalid remote URL');
+    }
+
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+        throw new Error('Only credential-free HTTP(S) URLs are allowed');
+    }
+
+    const addresses = await dns.lookup(parsed.hostname, { all: true });
+    if (!addresses.length || addresses.some(({ address }) => isPrivateIp(address))) {
+        throw new Error('Private or local network targets are not allowed');
+    }
+
+    return parsed.toString();
+}
+
 async function getBase64Image(url) {
     if (!url.startsWith('http://') && !url.startsWith('https://')) {
         return url; // Already base64 or other URI
     }
     try {
-        const res = await fetch(url);
+        const safeUrl = await assertSafeRemoteUrl(url);
+        const res = await fetch(safeUrl, { redirect: 'error' });
         if (!res.ok) throw new Error(`HTTP status ${res.status}`);
         const buffer = await res.arrayBuffer();
         const contentType = res.headers.get('content-type') || 'image/png';
