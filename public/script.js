@@ -243,8 +243,8 @@ function renderLayers() {
 		card.appendChild(header);
 
 		if (layer.type === 'text') {
-			const rowOne = document.createElement('div');
-			rowOne.className = 'row';
+const rowOne = document.createElement('div');
+				rowOne.className = 'row layer-row layer-row-primary';
 			const content = createField('input', 'txt-content', 'text', layer.content, 'Content');
 			content.wrapper.className = 'full-width';
 			content.wrapper.style.flex = '2';
@@ -254,12 +254,13 @@ function renderLayers() {
 			hint.textContent = 'Use [gitver/owner/repo] for auto version fetching (preview shows v1.0.0)';
 			content.wrapper.appendChild(hint);
 			rowOne.append(content.wrapper, createField('input', 'txt-x', 'number', layer.x, 'X').wrapper, createField('input', 'txt-y', 'number', layer.y, 'Y').wrapper, createField('input', 'txt-size', 'number', layer.fontSize, 'Size').wrapper);
-			const rowTwo = document.createElement('div');
-			rowTwo.className = 'row';
-			const color = createField('input', 'txt-color-hex', 'text', layer.color, 'Color');
-			const picker = document.createElement('input');
-			picker.className = 'txt-color'; picker.type = 'color'; picker.value = layer.color.slice(0, 7);
-			color.wrapper.appendChild(picker);
+const rowTwo = document.createElement('div');
+				rowTwo.className = 'row layer-row layer-row-secondary';
+				const color = createField('input', 'txt-color-hex', 'text', layer.color, 'Color');
+				color.wrapper.className = 'control-with-picker';
+				const picker = document.createElement('input');
+				picker.className = 'txt-color'; picker.type = 'color'; picker.value = layer.color.slice(0, 7);
+				color.wrapper.appendChild(picker);
 			const rotation = createField('input', 'txt-rot', 'number', layer.rotation, 'Rotation');
 			const anchor = createField('select', 'txt-anchor', '', '', 'Anchor');
 			['start', 'middle', 'end'].forEach(value => { const option = document.createElement('option'); option.value = value; option.textContent = value; option.selected = layer.anchor === value; anchor.input.appendChild(option); });

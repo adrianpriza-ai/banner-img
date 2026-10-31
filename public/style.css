@@ -94,6 +94,45 @@ h3 {
 	flex-wrap: wrap; 
 	align-items: flex-end; 
 }
+.layer-row {
+	align-items: stretch;
+}
+.layer-row-primary {
+	display: grid;
+	grid-template-columns: minmax(180px, 2fr) repeat(3, minmax(64px, 0.7fr));
+}
+.layer-row-secondary {
+	display: grid;
+	grid-template-columns: minmax(110px, 1fr) minmax(84px, 0.7fr) minmax(100px, 0.9fr) minmax(180px, 1.5fr) minmax(48px, 0.45fr);
+}
+.layer-row .col,
+.layer-row .control-with-picker {
+	min-width: 0;
+}
+.layer-row input:not([type="checkbox"]),
+.layer-row select {
+	width: 100%;
+	box-sizing: border-box;
+}
+.control-with-picker {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) 30px;
+	grid-template-rows: auto 30px;
+	column-gap: 6px;
+}
+.control-with-picker label,
+.control-with-picker .hint {
+	grid-column: 1 / -1;
+}
+.control-with-picker .txt-color-hex {
+	grid-column: 1;
+	grid-row: 2;
+}
+.control-with-picker .txt-color {
+	grid-column: 2;
+	grid-row: 2;
+	width: 30px;
+}
 .col {
 	display: flex;
 	flex-direction: column;
