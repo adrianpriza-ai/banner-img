@@ -103,7 +103,7 @@ h3 {
 }
 .layer-row-secondary {
 	display: grid;
-	grid-template-columns: minmax(110px, 1fr) minmax(84px, 0.7fr) minmax(100px, 0.9fr) minmax(180px, 1.5fr) minmax(48px, 0.45fr);
+	grid-template-columns: minmax(120px, 1.1fr) minmax(90px, 0.7fr) minmax(110px, 0.9fr) minmax(150px, 1.35fr) minmax(58px, 0.45fr);
 }
 .layer-row .col,
 .layer-row .control-with-picker {
@@ -364,19 +364,29 @@ button.btn-secondary:hover {
 	}
 	input[type="color"] {
 		height: 36px;
-		width: 100% !important;
+		width: 44px !important;
 	}
+	.layer-card .layer-row-primary,
+	.layer-card .layer-row-secondary,
 	.layer-card .row {
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 		gap: 8px;
+		width: 100%;
 	}
 	.layer-card .row > div {
-		flex: 1;
 		width: 100%;
-		min-width: 100%;
+		min-width: 0;
 	}
-	.layer-card .row > div.full-width {
-		min-width: 100%;
+	.layer-card .control-with-picker {
+		grid-template-columns: minmax(0, 1fr) 44px;
+	}
+	.layer-card .control-with-picker .txt-color {
+		width: 44px !important;
+		height: 36px;
+	}
+	.layer-card .layer-header > div button {
+		width: auto !important;
 	}
 	.layer-header {
 		flex-direction: column;
@@ -422,6 +432,7 @@ button.btn-secondary:hover {
 	}
 	/* Stack output buttons on mobile */
 	#layersContainer + .section .row {
-		flex-direction: column;
+		display: grid;
+		grid-template-columns: minmax(0, 1fr);
 	}
 }
